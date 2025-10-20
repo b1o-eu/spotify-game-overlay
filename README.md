@@ -15,22 +15,46 @@ This Spotify overlay is designed specifically for gamers who want to:
 ## Technology Stack
 
 - **Frontend**: JavaScript (ES6+), HTML5, CSS3
+- **Desktop**: Electron framework for cross-platform desktop app
 - **API Integration**: Spotify Web API
-- **Authentication**: OAuth 2.0 with Spotify
-- **Framework**: Vanilla JavaScript or lightweight framework (TBD)
+- **Authentication**: OAuth 2.0 with Spotify (custom protocol for desktop)
+- **Framework**: Vanilla JavaScript with Electron APIs
 - **Styling**: Modern CSS with responsive design
 
 ## Key Features (Planned)
 
-- 🎵 Real-time now playing display
-- ⏯️ Full playback controls (play, pause, skip, previous)
-- 📋 Queue management and visualization
-- 🔍 Search functionality for tracks, artists, and playlists
-- 🔊 Independent volume control
-- ⌨️ Customizable hotkeys for quick actions
-- 🎮 Game-friendly overlay positioning
-- 📱 Responsive design for different screen sizes
-- 🌙 Dark/light theme options
+- Real-time now playing display
+- Full playback controls (play, pause, skip, previous)
+- Queue management and visualization
+- Search functionality for tracks, artists, and playlists
+- Independent volume control
+- Customizable hotkeys for quick actions
+- Game-friendly overlay positioning
+- Responsive design for different screen sizes
+- Dark/light theme options
+- Cross-platform desktop app (Windows, macOS, Linux)
+
+## Installation & Setup
+
+### Option 1: Desktop App (Recommended)
+
+1. **Download**: Get the latest release for your platform from the [Releases](../../releases) page
+2. **Install**: Run the installer (.exe for Windows, .dmg for macOS, .AppImage for Linux)
+3. **Setup**: Follow the [Desktop Setup Guide](DESKTOP.md) for configuration
+
+### Option 2: Web Version
+
+1. **Clone**: `git clone https://github.com/your-username/spotify-game-overlay.git`
+2. **Install**: `npm install`
+3. **Run**: `npm run web-dev`
+4. **Setup**: Configure your Spotify Client ID in the app settings
+
+### Quick Start
+
+1. **Spotify App**: Create a Spotify Developer App at [developer.spotify.com](https://developer.spotify.com/dashboard)
+2. **Client ID**: Copy your Client ID from the Spotify app dashboard
+3. **Configure**: Enter your Client ID in the overlay settings
+4. **Authorize**: Click "Connect to Spotify" to authorize the app
 
 ## Target Audience
 

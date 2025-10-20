@@ -1,0 +1,93 @@
+{
+  "name": "spotify-game-overlay",
+  "version": "1.0.0",
+  "description": "A lightweight JavaScript-based overlay application that provides seamless Spotify integration for gamers",
+  "main": "main.js",
+  "homepage": "./",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "build": "node build.js",
+    "build-win": "node build.js win",
+    "build-mac": "node build.js mac",
+    "build-linux": "node build.js linux",
+    "build-all": "node build.js all",
+    "dist": "electron-builder --publish=never",
+    "web-dev": "python -m http.server 8080"
+  },
+  "keywords": [
+    "spotify",
+    "overlay",
+    "gaming",
+    "music",
+    "desktop-app",
+    "electron"
+  ],
+  "author": "Julia Knoth",
+  "license": "MIT",
+  "build": {
+    "appId": "com.juliaknoth.spotify-game-overlay",
+    "productName": "Spotify Game Overlay",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "callback.html",
+      "src/**/*",
+      "assets/**/*",
+      "!src/**/*.md",
+      "!assets/README.md"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64", "ia32"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.music"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "AudioVideo"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^38.3.0",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {}
+}

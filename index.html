@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Game Overlay</title>
+    <link rel="stylesheet" href="src/css/styles.css">
+    <link rel="stylesheet" href="src/css/overlay.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Main Overlay Container -->
+    <div id="spotify-overlay" class="overlay-container">
+        <!-- Header with Toggle and Settings -->
+        <div class="overlay-header">
+            <div class="logo">
+                <i class="fab fa-spotify"></i>
+                <span>Spotify Overlay</span>
+            </div>
+            <div class="header-controls">
+                <button id="minimize-btn" class="icon-btn" title="Minimize">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <button id="settings-btn" class="icon-btn" title="Settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button id="close-btn" class="icon-btn" title="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Now Playing Section -->
+        <div id="now-playing" class="now-playing-section">
+            <div class="track-info">
+                <div class="album-art">
+                    <img id="track-image" src="assets/default-album.png" alt="Album Art">
+                    <div class="play-indicator">
+                        <i class="fas fa-music"></i>
+                    </div>
+                </div>
+                <div class="track-details">
+                    <div class="track-name" id="track-name">Not Playing</div>
+                    <div class="artist-name" id="artist-name">Connect to Spotify</div>
+                    <div class="album-name" id="album-name"></div>
+                </div>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="progress-container">
+                <span class="time-current" id="time-current">0:00</span>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                    <div class="progress-handle" id="progress-handle"></div>
+                </div>
+                <span class="time-total" id="time-total">0:00</span>
+            </div>
+        </div>
+
+        <!-- Playback Controls -->
+        <div class="playback-controls">
+            <button id="shuffle-btn" class="control-btn" title="Shuffle">
+                <i class="fas fa-random"></i>
+            </button>
+            <button id="prev-btn" class="control-btn" title="Previous">
+                <i class="fas fa-step-backward"></i>
+            </button>
+            <button id="play-pause-btn" class="control-btn primary" title="Play/Pause">
+                <i class="fas fa-play"></i>
+            </button>
+            <button id="next-btn" class="control-btn" title="Next">
+                <i class="fas fa-step-forward"></i>
+            </button>
+            <button id="repeat-btn" class="control-btn" title="Repeat">
+                <i class="fas fa-redo"></i>
+            </button>
+        </div>
+
+        <!-- Volume Control -->
+        <div class="volume-control">
+            <i class="fas fa-volume-down"></i>
+            <div class="volume-slider">
+                <input type="range" id="volume-slider" min="0" max="100" value="50">
+            </div>
+            <i class="fas fa-volume-up"></i>
+        </div>
+
+        <!-- Search Section -->
+        <div class="search-section">
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Search to add songs to queue...">
+                <button id="search-btn" class="icon-btn">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <div id="search-results" class="search-results hidden"></div>
+        </div>
+
+        <!-- Queue Section -->
+        <div class="queue-section">
+            <div class="section-header">
+                <h3>Up Next</h3>
+                <button id="clear-queue-btn" class="icon-btn" title="Refresh Queue">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            <div id="queue-list" class="queue-list">
+                <div class="queue-item placeholder">
+                    <span>No songs in queue</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div id="connection-status" class="connection-status">
+            <div class="status-indicator disconnected"></div>
+            <span class="status-text">Disconnected</span>
+        </div>
+    </div>
+
+    <!-- Authentication Modal -->
+    <div id="auth-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Connect to Spotify</h2>
+                <button id="modal-close" class="icon-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>To use this overlay, you need to connect your Spotify account.</p>
+                <div class="auth-steps">
+                    <ol>
+                        <li>Click "Connect to Spotify" below</li>
+                        <li>Log in to your Spotify account</li>
+                        <li>Grant permissions to the overlay</li>
+                        <li>Enjoy seamless music control while gaming!</li>
+                    </ol>
+                </div>
+                <button id="connect-spotify-btn" class="primary-btn">
+                    <i class="fab fa-spotify"></i>
+                    Connect to Spotify
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button id="settings-modal-close" class="icon-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h3>Appearance</h3>
+                    <div class="setting-item">
+                        <label for="theme-select">Theme:</label>
+                        <select id="theme-select">
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="opacity-slider">Overlay Opacity:</label>
+                        <input type="range" id="opacity-slider" min="30" max="100" value="95">
+                        <span id="opacity-value">95%</span>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>Hotkeys</h3>
+                    <div class="setting-item">
+                        <label>Toggle Overlay:</label>
+                        <span class="hotkey">Ctrl + Shift + M</span>
+                    </div>
+                    <div class="setting-item">
+                        <label>Play/Pause:</label>
+                        <span class="hotkey">Ctrl + Shift + Space</span>
+                    </div>
+                    <div class="setting-item">
+                        <label>Next Track:</label>
+                        <span class="hotkey">Ctrl + Shift + Right</span>
+                    </div>
+                    <div class="setting-item">
+                        <label>Previous Track:</label>
+                        <span class="hotkey">Ctrl + Shift + Left</span>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>API Configuration</h3>
+                    <div class="setting-item">
+                        <label for="client-id">Client ID:</label>
+                        <input type="text" id="client-id" placeholder="Your Spotify Client ID">
+                    </div>
+                    <div class="setting-item">
+                        <label for="redirect-uri">Redirect URI:</label>
+                        <input type="text" id="redirect-uri" value="http://localhost:8080/callback" readonly>
+                    </div>
+                    <div class="setting-item">
+                        <label>Connection:</label>
+                        <button id="connect-spotify-btn" class="primary-btn">
+                            <i class="fab fa-spotify"></i>
+                            Connect to Spotify
+                        </button>
+                        <span id="connection-status" class="connection-status">Not Connected</span>
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button id="save-settings-btn" class="primary-btn">Save Settings</button>
+                    <button id="reset-settings-btn" class="secondary-btn">Reset to Default</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- JavaScript Files -->
+    <script src="src/js/config.js"></script>
+    <script src="src/js/spotify-api.js"></script>
+    <script src="src/js/ui-controller.js"></script>
+    <script src="src/js/hotkeys.js"></script>
+    <script src="src/js/main.js"></script>
+</body>
+</html>
