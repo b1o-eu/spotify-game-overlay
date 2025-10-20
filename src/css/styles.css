@@ -98,6 +98,13 @@ body {
     font-size: 14px;
 }
 
+.logo-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    display: inline-block;
+}
+
 .logo .fab {
     color: var(--accent-primary);
     font-size: 16px;
