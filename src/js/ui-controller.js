@@ -6,11 +6,30 @@ class UIController {
         this.dragOffset = { x: 0, y: 0 };
         this.isMinimized = false;
         this.searchDebounced = Utils.debounce(this.performSearch.bind(this), CONFIG.UI.SEARCH_DEBOUNCE);
-        
-        this.initializeElements();
-        this.attachEventListeners();
-        this.loadStoredPosition();
-        this.applyTheme();
+        // Guard each initialization step so a single error doesn't break the whole controller
+        try {
+            this.initializeElements();
+        } catch (err) {
+            console.error('[UIController] initializeElements failed:', err);
+        }
+
+        try {
+            this.attachEventListeners();
+        } catch (err) {
+            console.error('[UIController] attachEventListeners failed:', err);
+        }
+
+        try {
+            this.loadStoredPosition();
+        } catch (err) {
+            console.error('[UIController] loadStoredPosition failed:', err);
+        }
+
+        try {
+            this.applyTheme();
+        } catch (err) {
+            console.error('[UIController] applyTheme failed:', err);
+        }
         
         // Listen to app state changes
         window.addEventListener('appStateChange', this.handleStateChange.bind(this));
@@ -76,6 +95,7 @@ class UIController {
             clientIdInput: document.getElementById('client-id'),
             // Hotkey inputs
             hotkeyToggle: document.getElementById('hotkey-toggle'),
+            globalHotkeysCheckbox: document.getElementById('global-hotkeys'),
             hotkeyPlayPause: document.getElementById('hotkey-playpause'),
             hotkeyNext: document.getElementById('hotkey-next'),
             hotkeyPrev: document.getElementById('hotkey-prev'),
@@ -137,6 +157,8 @@ class UIController {
         this.elements.connectSpotifySettingsBtn?.addEventListener('click', this.connectFromSettings.bind(this));
         this.elements.saveSettingsBtn?.addEventListener('click', this.saveSettings.bind(this));
         this.elements.resetSettingsBtn?.addEventListener('click', this.resetSettings.bind(this));
+    // Global hotkeys checkbox
+    this.elements.globalHotkeysCheckbox?.addEventListener('change', this.handleGlobalHotkeysToggle.bind(this));
 
         // Hotkey inputs: capture when focused
         const hotInputs = [
@@ -189,6 +211,34 @@ class UIController {
                 this.hideSettings();
             }
         });
+
+        // Listen for global hotkey events from main (Electron)
+        if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.onGlobalHotkey === 'function') {
+            window.electronAPI.onGlobalHotkey((action) => {
+                // When a global hotkey arrives, run the corresponding hotkey manager callback
+                if (!window.hotkeyManager) return;
+
+                // Temporarily disable local key handling to avoid duplicates
+                const prev = window.hotkeyManager.isEnabled;
+                window.hotkeyManager.setEnabled(false);
+
+                try {
+                    const actionMap = {
+                        TOGGLE_MENU: () => window.hotkeyManager.toggleMenu(),
+                        PLAY_PAUSE: () => window.hotkeyManager.togglePlayPause(),
+                        NEXT_TRACK: () => window.hotkeyManager.nextTrack(),
+                        PREV_TRACK: () => window.hotkeyManager.previousTrack(),
+                        VOLUME_UP: () => window.hotkeyManager.volumeUp(),
+                        VOLUME_DOWN: () => window.hotkeyManager.volumeDown()
+                    };
+
+                    const fn = actionMap[action];
+                    if (fn) fn();
+                } finally {
+                    window.hotkeyManager.setEnabled(prev);
+                }
+            });
+        }
     }
 
     // Handle app state changes
@@ -642,6 +692,11 @@ class UIController {
         if (this.elements.hotkeyPrev) this.elements.hotkeyPrev.value = (hotkeys.PREV_TRACK || CONFIG.HOTKEYS.PREV_TRACK).replace(/\+/g, ' + ');
         if (this.elements.hotkeyVolUp) this.elements.hotkeyVolUp.value = (hotkeys.VOLUME_UP || CONFIG.HOTKEYS.VOLUME_UP).replace(/\+/g, ' + ');
         if (this.elements.hotkeyVolDown) this.elements.hotkeyVolDown.value = (hotkeys.VOLUME_DOWN || CONFIG.HOTKEYS.VOLUME_DOWN).replace(/\+/g, ' + ');
+
+        // Global hotkeys setting
+        if (this.elements.globalHotkeysCheckbox) {
+            this.elements.globalHotkeysCheckbox.checked = !!settings.globalHotkeys;
+        }
     }
 
     async connectToSpotify() {
@@ -773,10 +828,23 @@ class UIController {
         settings.hotkeys.VOLUME_UP = pick(this.elements.hotkeyVolUp, CONFIG.HOTKEYS.VOLUME_UP);
         settings.hotkeys.VOLUME_DOWN = pick(this.elements.hotkeyVolDown, CONFIG.HOTKEYS.VOLUME_DOWN);
 
+        // Global hotkeys option (Electron only)
+        if (this.elements.globalHotkeysCheckbox) {
+            settings.globalHotkeys = !!this.elements.globalHotkeysCheckbox.checked;
+        }
+
         // Persist settings and apply hotkeys
         window.appState.saveSettings();
         if (window.hotkeyManager && typeof window.hotkeyManager.applyHotkeysFromSettings === 'function') {
             window.hotkeyManager.applyHotkeysFromSettings(settings.hotkeys);
+        }
+        // Register/unregister global hotkeys if applicable
+        try {
+            if (typeof this.registerGlobalHotkeysIfEnabled === 'function') {
+                this.registerGlobalHotkeysIfEnabled();
+            }
+        } catch (e) {
+            console.error('Failed to register/unregister global hotkeys:', e);
         }
         
         // Other UI updates
@@ -808,6 +876,102 @@ class UIController {
         window.appState.settings.opacity = opacity;
         this.elements.opacityValue.textContent = `${opacity}%`;
         this.applyOpacity();
+    }
+
+    // Handle enabling/disabling of global hotkeys via the checkbox
+    async handleGlobalHotkeysToggle(event) {
+        window.appState.settings.globalHotkeys = !!event.target.checked;
+        window.appState.saveSettings();
+        await this.registerGlobalHotkeysIfEnabled();
+    }
+
+    // Convert settings.hotkeys to Electron accelerators and register/unregister via preload
+    async registerGlobalHotkeysIfEnabled() {
+        if (!(window.electronAPI && window.electronAPI.isElectron)) return;
+        if (typeof window.electronAPI.registerGlobalHotkeys !== 'function') return;
+
+        const settings = window.appState.settings || {};
+        const enabled = !!settings.globalHotkeys;
+
+        try {
+            if (!enabled) {
+                await window.electronAPI.unregisterGlobalHotkeys();
+                return;
+            }
+
+            const accelMap = {};
+            const hotkeys = settings.hotkeys || CONFIG.DEFAULTS.hotkeys || CONFIG.HOTKEYS;
+
+            const specialMap = {
+                ' ': 'Space',
+                'space': 'Space',
+                'arrowup': 'Up',
+                'arrowdown': 'Down',
+                'arrowleft': 'Left',
+                'arrowright': 'Right',
+                'up': 'Up',
+                'down': 'Down',
+                'left': 'Left',
+                'right': 'Right',
+                'escape': 'Esc',
+                'esc': 'Esc',
+                'enter': 'Enter',
+                'tab': 'Tab',
+                'backspace': 'Backspace',
+                'delete': 'Delete',
+                'del': 'Delete'
+            };
+
+            const normalizePart = (p) => {
+                const lower = p.toLowerCase();
+                if (lower === 'ctrl' || lower === 'meta') return 'CmdOrCtrl';
+                if (lower === 'alt') return 'Alt';
+                if (lower === 'shift') return 'Shift';
+                if (specialMap[lower]) return specialMap[lower];
+                if (/^f\d{1,2}$/.test(lower)) return lower.toUpperCase();
+                return p.length === 1 ? p.toUpperCase() : p.charAt(0).toUpperCase() + p.slice(1);
+            };
+
+            Object.entries(hotkeys).forEach(([action, combo]) => {
+                if (!combo) return;
+                const parts = combo.split('+').map(p => p.trim()).filter(Boolean);
+                // Map and dedupe modifiers like CmdOrCtrl
+                const mapped = parts.map(normalizePart);
+                // Ensure CmdOrCtrl appears only once
+                const finalParts = [];
+                const seen = new Set();
+                mapped.forEach(part => {
+                    if (part === 'CmdOrCtrl') {
+                        if (!seen.has('CmdOrCtrl')) {
+                            finalParts.push('CmdOrCtrl');
+                            seen.add('CmdOrCtrl');
+                        }
+                    } else {
+                        if (!seen.has(part)) {
+                            finalParts.push(part);
+                            seen.add(part);
+                        }
+                    }
+                });
+
+                accelMap[action] = finalParts.join('+');
+            });
+
+            const result = await window.electronAPI.registerGlobalHotkeys(accelMap);
+            // result expected to be { registered: [], failed: [] }
+            if (result && typeof result === 'object') {
+                const reg = result.registered || [];
+                const failed = result.failed || [];
+                if (failed.length > 0) {
+                    this.showToast(`Global hotkeys: ${reg.length} registered, ${failed.length} failed`, 'warning');
+                    console.warn('[UIController] global hotkeys registration failures:', failed);
+                } else {
+                    this.showToast(`Global hotkeys registered (${reg.length})`, 'success');
+                }
+            }
+        } catch (err) {
+            console.error('[UIController] registerGlobalHotkeysIfEnabled error:', err);
+        }
     }
 
     applyTheme() {
@@ -963,8 +1127,29 @@ class UIController {
     }
 }
 
-// Initialize UI Controller
-window.uiController = new UIController();
+// Initialize UI Controller (guarded)
+try {
+    window.uiController = new UIController();
+} catch (err) {
+    console.error('[UIController] initialization failed:', err);
+    // Provide a more comprehensive stub so other modules don't crash while we surface the real error
+    window.uiController = {
+        applyTheme: () => {},
+        applyOpacity: () => {},
+        updateConnectionStatus: () => {},
+        updateNowPlaying: () => {},
+        updatePlaybackControls: () => {},
+        updateProgress: () => {},
+        updateQueue: () => {},
+        showToast: (msg, type) => console.log('[UI Stub Toast]', type, msg),
+        // Playback helper stubs
+        togglePlayPause: async () => console.log('[UI Stub] togglePlayPause'),
+        nextTrack: async () => console.log('[UI Stub] nextTrack'),
+        previousTrack: async () => console.log('[UI Stub] previousTrack'),
+        showMenu: () => console.log('[UI Stub] showMenu'),
+        hideMenu: () => console.log('[UI Stub] hideMenu')
+    };
+}
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {

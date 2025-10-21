@@ -20,6 +20,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
             callback(params);
         });
     },
+    // Global hotkey management (main process only)
+    registerGlobalHotkeys: (hotkeys) => ipcRenderer.invoke('register-global-hotkeys', hotkeys),
+    unregisterGlobalHotkeys: () => ipcRenderer.invoke('unregister-global-hotkeys'),
+    onGlobalHotkey: (callback) => {
+        ipcRenderer.on('global-hotkey', (event, action) => callback(action));
+    },
     
     // Open external URLs in the user's default browser
     openExternal: (url) => ipcRenderer.invoke('open-external', url),

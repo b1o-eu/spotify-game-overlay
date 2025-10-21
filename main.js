@@ -1,5 +1,6 @@
 // Electron Main Process for Spotify Game Menu
 const { app, BrowserWindow, protocol, shell, ipcMain, Menu, Tray, nativeImage } = require('electron');
+const { globalShortcut } = require('electron');
 const path = require('path');
 const { URL } = require('url');
 const http = require('http');
@@ -290,6 +291,61 @@ ipcMain.handle('window-resize', (event, width, height) => {
     } catch (err) {
         console.error('[Main] window-resize error:', err);
         throw err;
+    }
+});
+
+// Keep track of registered global shortcuts
+let registeredGlobalShortcuts = [];
+
+ipcMain.handle('register-global-hotkeys', (event, hotkeys) => {
+    try {
+        // Unregister any existing first
+        registeredGlobalShortcuts.forEach(accel => globalShortcut.unregister(accel));
+        registeredGlobalShortcuts = [];
+
+        if (!hotkeys || typeof hotkeys !== 'object') return true;
+
+        // hotkeys expected to be an object mapping action -> accelerator string
+        const registered = [];
+        const failed = [];
+
+        for (const [action, accel] of Object.entries(hotkeys)) {
+            if (!accel) continue;
+            try {
+                const success = globalShortcut.register(accel, () => {
+                    if (mainWindow && !mainWindow.isDestroyed()) {
+                        mainWindow.webContents.send('global-hotkey', action);
+                    }
+                });
+
+                if (success) {
+                    registered.push(accel);
+                    registeredGlobalShortcuts.push(accel);
+                } else {
+                    failed.push({ accel, reason: 'register returned false' });
+                }
+            } catch (e) {
+                console.warn('[Main] Failed to register global shortcut', accel, e);
+                failed.push({ accel, reason: e.message || String(e) });
+            }
+        }
+
+        return { registered, failed };
+    } catch (err) {
+        console.error('[Main] register-global-hotkeys error:', err);
+        return false;
+    }
+});
+
+ipcMain.handle('unregister-global-hotkeys', () => {
+    try {
+        const cleared = registeredGlobalShortcuts.slice();
+        registeredGlobalShortcuts.forEach(accel => globalShortcut.unregister(accel));
+        registeredGlobalShortcuts = [];
+        return { cleared };
+    } catch (err) {
+        console.error('[Main] unregister-global-hotkeys error:', err);
+        return false;
     }
 });
 

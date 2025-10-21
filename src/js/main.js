@@ -83,6 +83,15 @@ class SpotifyGameMenu {
         
         // Load initial UI state
         this.updateUIFromState();
+
+        // Register global hotkeys if user enabled them (Electron only)
+        try {
+            if (window.uiController && typeof window.uiController.registerGlobalHotkeysIfEnabled === 'function') {
+                await window.uiController.registerGlobalHotkeysIfEnabled();
+            }
+        } catch (e) {
+            console.error('[App] registerGlobalHotkeysIfEnabled failed:', e);
+        }
     }
 
     async startApplication() {

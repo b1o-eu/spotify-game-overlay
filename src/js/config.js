@@ -77,6 +77,8 @@ const CONFIG = {
         autoHide: false,
         showNotifications: true,
         volume: 50,
+        // Whether to register system-wide global shortcuts (Electron only)
+        globalHotkeys: false,
         // Default hotkeys (user-customizable, stored in settings)
         hotkeys: {
             TOGGLE_MENU: 'ctrl+shift+m',
