@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build script for Spotify Game Overlay Desktop App
+ * Build script for Spotify Game Menu Desktop App
  * Handles building for different platforms with proper error handling
  */
 
@@ -75,7 +75,7 @@ async function main() {
     const args = process.argv.slice(2);
     const platform = args[0] || 'current';
     
-    console.log('Spotify Game Overlay - Build Script\n');
+    console.log('Spotify Game Menu - Build Script\n');
     
     // Check assets first
     checkAssets();
@@ -105,7 +105,7 @@ async function main() {
 if (require.main === module) {
     if (process.argv.includes('--help') || process.argv.includes('-h')) {
         console.log(`
-Spotify Game Overlay - Build Script
+Spotify Game Menu - Build Script
 
 Usage: node build.js [platform]
 

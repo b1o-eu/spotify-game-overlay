@@ -1,6 +1,6 @@
 # Assets Folder
 
-This folder contains app icons and images for the Spotify Game Overlay.
+This folder contains app icons and images for the Spotify Game Menu.
 
 ## Required Icons for Distribution
 

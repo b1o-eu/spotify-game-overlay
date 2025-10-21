@@ -1,4 +1,4 @@
-# Spotify Game Overlay - Setup Instructions
+# Spotify Game Menu - Setup Instructions
 
 ## Prerequisites
 
@@ -15,8 +15,8 @@
 2. Log in with your Spotify account
 3. Click "Create App"
 4. Fill in the details:
-   - **App Name**: Spotify Game Overlay
-   - **App Description**: Gaming overlay for Spotify control
+   - **App Name**: Spotify Game Menu
+   - **App Description**: Gaming menu for Spotify control
     - **Website**: http://127.0.0.1:8080
     - **Redirect URIs**: add BOTH of the following so either Electron or Web flow works
        - http://127.0.0.1:8080/callback (Electron app)
@@ -56,10 +56,10 @@ http-server -p 8080
 3. Select "Open with Live Server"
    - Note the URL it opens (e.g., http://127.0.0.1:5500). Ensure your Spotify app includes the matching Redirect URI (e.g., http://127.0.0.1:5500/callback.html)
 
-### 3. Configure the Overlay
+### 3. Configure the Menu
 
 1. Open your browser and go to `http://127.0.0.1:8080`
-2. Click the settings button in the overlay header
+2. Click the settings button in the menu header
 3. Enter your Spotify **Client ID** from step 1
 4. Click "Save Settings"
 5. Click "Connect to Spotify"
@@ -85,17 +85,17 @@ http-server -p 8080
 - The queue updates automatically as you play music
 
 ### Hotkeys (Global)
-- `Ctrl+Shift+M`: Toggle overlay visibility
+- `Ctrl+Shift+M`: Toggle menu visibility
 - `Ctrl+Shift+Space`: Play/Pause
 - `Ctrl+Shift+Right`: Next track
 - `Ctrl+Shift+Left`: Previous track
 - `Ctrl+Shift+Up`: Volume up
 - `Ctrl+Shift+Down`: Volume down
 
-### Overlay Features
-- **Draggable**: Drag the header to move the overlay anywhere on screen
-- **Minimizable**: Click the minimize button to collapse to header only
-- **Resizable Opacity**: Adjust overlay transparency in settings
+### Menu Features
+-- **Draggable**: Drag the header to move the menu anywhere on screen
+-- **Minimizable**: Click the minimize button to collapse to header only
+-- **Resizable Opacity**: Adjust menu transparency in settings
 - **Theme Support**: Switch between dark and light themes
 
 ## Troubleshooting
@@ -123,7 +123,7 @@ http-server -p 8080
 - Check if another application is capturing the same hotkeys
 - Try different key combinations in the settings
 
-### Overlay Not Updating
+### Menu Not Updating
 - Check your internet connection
 - Verify Spotify is playing music
 - Try refreshing the page
@@ -150,18 +150,18 @@ http-server -p 8080
 ### Debug Mode
 Open browser console (F12) and type:
 ```javascript
-debugOverlay()
+debugMenu()
 ```
-This will show debug information overlay with current state.
+This will show debug information for the menu with current state.
 
 ### Restart Application
 ```javascript
-restartOverlay()
+restartMenu()
 ```
 
 ### Check Status
 ```javascript
-getOverlayStatus()
+getMenuStatus()
 ```
 
 ## Security Notes
@@ -190,6 +190,6 @@ If you encounter issues:
 1. Check the browser console for error messages (F12)
 2. Verify your Spotify Developer app settings
 3. Make sure you have Spotify Premium
-4. Try restarting both the overlay and Spotify
+4. Try restarting both the menu and Spotify
 
 Enjoy your seamless gaming music experience!

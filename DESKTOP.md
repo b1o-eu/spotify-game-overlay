@@ -1,6 +1,6 @@
-# Spotify Game Overlay - Desktop App Setup
+# Spotify Game Menu - Desktop App Setup
 
-This guide will help you build and run the Spotify Game Overlay as a standalone desktop application.
+This guide will help you build and run the Spotify Game Menu as a standalone desktop application.
 
 ## Prerequisites
 
@@ -20,14 +20,11 @@ npm install
 
 1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
 2. Create a new app or use an existing one
-3. Add the following redirect URI to your app settings:
-   - For desktop: `spotify-overlay://callback`
-   - For web (fallback): `http://127.0.0.1:5500/callback.html`
 
 ### 3. Run in Development Mode
 
 ```bash
-npm run dev
+npm start
 ```
 
 This will open the app in development mode with developer tools enabled.
@@ -56,19 +53,19 @@ The desktop version includes:
 - **OAuth Integration**: Secure Spotify authentication
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 - **Auto-Updater Ready**: Built with electron-builder
-- **Frameless Window**: Custom overlay appearance
+-- **Frameless Window**: Custom menu appearance
 
 ## Usage
 
 1. **First Run**: Enter your Spotify Client ID when prompted
 2. **Authentication**: Click "Connect to Spotify" to authorize the app
-3. **Position**: Drag the overlay to your preferred screen location
+3. **Position**: Drag the menu to your preferred screen location
 4. **Controls**: Use the header buttons to minimize or close
 5. **System Tray**: Right-click the tray icon for options
 
 ## Keyboard Shortcuts
 
-- `Ctrl+Shift+M`: Toggle overlay visibility
+-- `Ctrl+Shift+M`: Toggle menu visibility
 - `Ctrl+Shift+Space`: Play/Pause
 - `Ctrl+Shift+Right`: Next track
 - `Ctrl+Shift+Left`: Previous track
@@ -110,7 +107,7 @@ The desktop version includes:
 ### Window Issues  
 - Try resetting position by deleting app data
 - Check if "Always on Top" is causing conflicts
-- Restart the app if overlay becomes unresponsive
+- Restart the app if the menu becomes unresponsive
 
 ### Build Issues
 - Clear `node_modules` and reinstall dependencies

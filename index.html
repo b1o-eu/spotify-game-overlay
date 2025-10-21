@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spotify Game Overlay</title>
+    <title>Spotify Game Menu</title>
     <link rel="icon" href="assets/icon.ico" type="image/ico">
     <link rel="stylesheet" href="src/css/styles.css">
-    <link rel="stylesheet" href="src/css/overlay.css">
+    <link rel="stylesheet" href="src/css/menu.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Main Overlay Container -->
-    <div id="spotify-overlay" class="overlay-container">
+    <!-- Main Container -->
+    <div id="spotify-menu" class="menu-container">
         <!-- Header with Toggle and Settings -->
-        <div class="overlay-header">
+        <div class="menu-header">
             <div class="logo">
-                <img class="logo-icon" src="assets/icon.ico" alt="App icon" aria-hidden="true" />
+                <img class="logo-icon" src="assets/icon.png" alt="App icon" aria-hidden="true" />
                 <span>Spotify Controller</span>
             </div>
             <div class="header-controls">
@@ -129,12 +129,12 @@
                 </button>
             </div>
             <div class="modal-body">
-                <p>To use this overlay, you need to connect your Spotify account.</p>
+                <p>To use this menu, you need to connect your Spotify account.</p>
                 <div class="auth-steps">
                     <ol>
                         <li>Click "Connect to Spotify" below</li>
                         <li>Log in to your Spotify account</li>
-                        <li>Grant permissions to the overlay</li>
+                        <li>Grant permissions to the menu</li>
                         <li>Enjoy seamless music control while gaming!</li>
                     </ol>
                 </div>
@@ -166,7 +166,7 @@
                         </select>
                     </div>
                     <div class="setting-item">
-                        <label for="opacity-slider">Overlay Opacity:</label>
+                        <label for="opacity-slider">Menu Opacity:</label>
                         <input type="range" id="opacity-slider" min="30" max="100" value="95">
                         <span id="opacity-value">95%</span>
                     </div>
@@ -175,20 +175,28 @@
                 <div class="settings-section">
                     <h3>Hotkeys</h3>
                     <div class="setting-item">
-                        <label>Toggle Overlay:</label>
-                        <span class="hotkey">Ctrl + Shift + M</span>
+                        <label for="hotkey-toggle">Toggle Menu:</label>
+                        <input type="text" id="hotkey-toggle" class="hotkey-input" placeholder="Press keys..." readonly>
                     </div>
                     <div class="setting-item">
-                        <label>Play/Pause:</label>
-                        <span class="hotkey">Ctrl + Shift + Space</span>
+                        <label for="hotkey-playpause">Play/Pause:</label>
+                        <input type="text" id="hotkey-playpause" class="hotkey-input" placeholder="Press keys..." readonly>
                     </div>
                     <div class="setting-item">
-                        <label>Next Track:</label>
-                        <span class="hotkey">Ctrl + Shift + Right</span>
+                        <label for="hotkey-next">Next Track:</label>
+                        <input type="text" id="hotkey-next" class="hotkey-input" placeholder="Press keys..." readonly>
                     </div>
                     <div class="setting-item">
-                        <label>Previous Track:</label>
-                        <span class="hotkey">Ctrl + Shift + Left</span>
+                        <label for="hotkey-prev">Previous Track:</label>
+                        <input type="text" id="hotkey-prev" class="hotkey-input" placeholder="Press keys..." readonly>
+                    </div>
+                    <div class="setting-item">
+                        <label for="hotkey-volup">Volume Up:</label>
+                        <input type="text" id="hotkey-volup" class="hotkey-input" placeholder="Press keys..." readonly>
+                    </div>
+                    <div class="setting-item">
+                        <label for="hotkey-voldown">Volume Down:</label>
+                        <input type="text" id="hotkey-voldown" class="hotkey-input" placeholder="Press keys..." readonly>
                     </div>
                 </div>
 

@@ -1,4 +1,4 @@
-// UI Controller for Spotify Game Overlay
+// UI Controller for Spotify Game Menu
 class UIController {
     constructor() {
         this.elements = {};
@@ -20,7 +20,7 @@ class UIController {
     initializeElements() {
         this.elements = {
             // Main container
-            overlay: document.getElementById('spotify-overlay'),
+            menu: document.getElementById('spotify-menu'),
             
             // Header controls
             minimizeBtn: document.getElementById('minimize-btn'),
@@ -74,8 +74,14 @@ class UIController {
             opacitySlider: document.getElementById('opacity-slider'),
             opacityValue: document.getElementById('opacity-value'),
             clientIdInput: document.getElementById('client-id'),
+            // Hotkey inputs
+            hotkeyToggle: document.getElementById('hotkey-toggle'),
+            hotkeyPlayPause: document.getElementById('hotkey-playpause'),
+            hotkeyNext: document.getElementById('hotkey-next'),
+            hotkeyPrev: document.getElementById('hotkey-prev'),
+            hotkeyVolUp: document.getElementById('hotkey-volup'),
+            hotkeyVolDown: document.getElementById('hotkey-voldown'),
             connectSpotifySettingsBtn: document.getElementById('connect-spotify-settings-btn'),
-            connectionStatus: document.getElementById('connection-status'),
             saveSettingsBtn: document.getElementById('save-settings-btn'),
             resetSettingsBtn: document.getElementById('reset-settings-btn'),
             
@@ -92,7 +98,7 @@ class UIController {
         this.elements.closeBtn?.addEventListener('click', this.handleClose.bind(this));
         
         // Dragging
-        const header = document.querySelector('.overlay-header');
+    const header = document.querySelector('.menu-header');
         header?.addEventListener('mousedown', this.startDrag.bind(this));
         document.addEventListener('mousemove', this.handleDrag.bind(this));
         document.addEventListener('mouseup', this.endDrag.bind(this));
@@ -131,6 +137,42 @@ class UIController {
         this.elements.connectSpotifySettingsBtn?.addEventListener('click', this.connectFromSettings.bind(this));
         this.elements.saveSettingsBtn?.addEventListener('click', this.saveSettings.bind(this));
         this.elements.resetSettingsBtn?.addEventListener('click', this.resetSettings.bind(this));
+
+        // Hotkey inputs: capture when focused
+        const hotInputs = [
+            { el: this.elements.hotkeyToggle, key: 'TOGGLE_MENU' },
+            { el: this.elements.hotkeyPlayPause, key: 'PLAY_PAUSE' },
+            { el: this.elements.hotkeyNext, key: 'NEXT_TRACK' },
+            { el: this.elements.hotkeyPrev, key: 'PREV_TRACK' },
+            { el: this.elements.hotkeyVolUp, key: 'VOLUME_UP' },
+            { el: this.elements.hotkeyVolDown, key: 'VOLUME_DOWN' }
+        ];
+
+        hotInputs.forEach(({ el, key }) => {
+            if (!el) return;
+            // Show a hint
+            el.addEventListener('focus', () => el.value = 'Press keys...');
+
+            const keyDownHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const combo = window.hotkeyManager?.captureComboFromEvent(e) || '';
+                el.value = combo.replace(/\+/g, ' + ');
+                // Temporarily store on the element dataset for later saving
+                el.dataset.combo = combo;
+            };
+
+            const blurHandler = () => {
+                // If user didn't press anything, restore previous value
+                if (!el.dataset.combo) {
+                    // will be set by loadSettingsToForm when modal opens
+                }
+                document.removeEventListener('keydown', keyDownHandler, true);
+            };
+
+            el.addEventListener('keydown', keyDownHandler, true);
+            el.addEventListener('blur', blurHandler);
+        });
         
         // Click outside modals to close
         this.elements.authModal?.addEventListener('click', (e) => {
@@ -590,6 +632,16 @@ class UIController {
         if (redirectUriInput) {
             redirectUriInput.value = CONFIG.SPOTIFY.REDIRECT_URI;
         }
+
+        // Load hotkeys into form (stored under settings.hotkeys or fallback to CONFIG.DEFAULTS.hotkeys)
+        const hotkeys = settings.hotkeys || CONFIG.DEFAULTS.hotkeys || CONFIG.HOTKEYS;
+
+        if (this.elements.hotkeyToggle) this.elements.hotkeyToggle.value = (hotkeys.TOGGLE_MENU || CONFIG.HOTKEYS.TOGGLE_MENU).replace(/\+/g, ' + ');
+        if (this.elements.hotkeyPlayPause) this.elements.hotkeyPlayPause.value = (hotkeys.PLAY_PAUSE || CONFIG.HOTKEYS.PLAY_PAUSE).replace(/\+/g, ' + ');
+        if (this.elements.hotkeyNext) this.elements.hotkeyNext.value = (hotkeys.NEXT_TRACK || CONFIG.HOTKEYS.NEXT_TRACK).replace(/\+/g, ' + ');
+        if (this.elements.hotkeyPrev) this.elements.hotkeyPrev.value = (hotkeys.PREV_TRACK || CONFIG.HOTKEYS.PREV_TRACK).replace(/\+/g, ' + ');
+        if (this.elements.hotkeyVolUp) this.elements.hotkeyVolUp.value = (hotkeys.VOLUME_UP || CONFIG.HOTKEYS.VOLUME_UP).replace(/\+/g, ' + ');
+        if (this.elements.hotkeyVolDown) this.elements.hotkeyVolDown.value = (hotkeys.VOLUME_DOWN || CONFIG.HOTKEYS.VOLUME_DOWN).replace(/\+/g, ' + ');
     }
 
     async connectToSpotify() {
@@ -706,11 +758,31 @@ class UIController {
                 localStorage.setItem(CONFIG.STORAGE.CLIENT_ID, clientId);
             }
         }
-        
+
+        // Read hotkey values from input elements (prefer stored dataset.combo if user captured)
+        settings.hotkeys = settings.hotkeys || {};
+        const pick = (el, fallback) => {
+            if (!el) return fallback;
+            return el.dataset.combo || el.value.replace(/\s+\+\s+/g, '+') || fallback;
+        };
+
+        settings.hotkeys.TOGGLE_MENU = pick(this.elements.hotkeyToggle, CONFIG.HOTKEYS.TOGGLE_MENU);
+        settings.hotkeys.PLAY_PAUSE = pick(this.elements.hotkeyPlayPause, CONFIG.HOTKEYS.PLAY_PAUSE);
+        settings.hotkeys.NEXT_TRACK = pick(this.elements.hotkeyNext, CONFIG.HOTKEYS.NEXT_TRACK);
+        settings.hotkeys.PREV_TRACK = pick(this.elements.hotkeyPrev, CONFIG.HOTKEYS.PREV_TRACK);
+        settings.hotkeys.VOLUME_UP = pick(this.elements.hotkeyVolUp, CONFIG.HOTKEYS.VOLUME_UP);
+        settings.hotkeys.VOLUME_DOWN = pick(this.elements.hotkeyVolDown, CONFIG.HOTKEYS.VOLUME_DOWN);
+
+        // Persist settings and apply hotkeys
         window.appState.saveSettings();
+        if (window.hotkeyManager && typeof window.hotkeyManager.applyHotkeysFromSettings === 'function') {
+            window.hotkeyManager.applyHotkeysFromSettings(settings.hotkeys);
+        }
+        
+        // Other UI updates
         this.applyTheme();
         this.applyOpacity();
-        
+
         this.showToast('Settings saved', 'success');
         this.hideSettings();
     }
@@ -741,28 +813,28 @@ class UIController {
     applyTheme() {
         const theme = window.appState.settings.theme;
         if (theme === 'light') {
-            this.elements.overlay?.classList.add('light-theme');
+            this.elements.menu?.classList.add('light-theme');
         } else {
-            this.elements.overlay?.classList.remove('light-theme');
+            this.elements.menu?.classList.remove('light-theme');
         }
     }
 
     applyOpacity() {
         const opacity = window.appState.settings.opacity / 100;
-        if (this.elements.overlay) {
-            this.elements.overlay.style.opacity = opacity;
+        if (this.elements.menu) {
+            this.elements.menu.style.opacity = opacity;
         }
     }
 
-    // Overlay positioning and dragging
+    // Menu positioning and dragging
     startDrag(event) {
         // If running in Electron use native window dragging (via CSS -webkit-app-region: drag)
         if (window.electronAPI && window.electronAPI.isElectron) return;
 
         this.isDragging = true;
-        this.elements.overlay?.classList.add('dragging');
+        this.elements.menu?.classList.add('dragging');
 
-        const rect = this.elements.overlay.getBoundingClientRect();
+        const rect = this.elements.menu.getBoundingClientRect();
         this.dragOffset = {
             x: event.clientX - rect.left,
             y: event.clientY - rect.top
@@ -777,27 +849,27 @@ class UIController {
         const x = event.clientX - this.dragOffset.x;
         const y = event.clientY - this.dragOffset.y;
         
-        // Keep overlay within viewport
-        const maxX = window.innerWidth - this.elements.overlay.offsetWidth;
-        const maxY = window.innerHeight - this.elements.overlay.offsetHeight;
+    // Keep menu within viewport
+        const maxX = window.innerWidth - this.elements.menu.offsetWidth;
+        const maxY = window.innerHeight - this.elements.menu.offsetHeight;
         
         const constrainedX = Math.max(0, Math.min(x, maxX));
         const constrainedY = Math.max(0, Math.min(y, maxY));
         
-        this.elements.overlay.style.right = 'auto';
-        this.elements.overlay.style.left = `${constrainedX}px`;
-        this.elements.overlay.style.top = `${constrainedY}px`;
+        this.elements.menu.style.right = 'auto';
+        this.elements.menu.style.left = `${constrainedX}px`;
+        this.elements.menu.style.top = `${constrainedY}px`;
     }
 
     endDrag() {
         if (!this.isDragging) return; 
 
         this.isDragging = false;
-        this.elements.overlay?.classList.remove('dragging');
+        this.elements.menu?.classList.remove('dragging');
 
         // If not running in Electron, save DOM position
         if (!(window.electronAPI && window.electronAPI.isElectron)) {
-            const rect = this.elements.overlay.getBoundingClientRect();
+            const rect = this.elements.menu.getBoundingClientRect();
             window.appState.settings.position = {
                 x: rect.left,
                 y: rect.top
@@ -814,9 +886,9 @@ class UIController {
 
         const position = window.appState.settings.position;
         if (position) {
-            this.elements.overlay.style.right = 'auto';
-            this.elements.overlay.style.left = `${position.x}px`;
-            this.elements.overlay.style.top = `${position.y}px`;
+            this.elements.menu.style.right = 'auto';
+            this.elements.menu.style.left = `${position.x}px`;
+            this.elements.menu.style.top = `${position.y}px`;
         }
     }
 
@@ -824,20 +896,20 @@ class UIController {
         this.isMinimized = !this.isMinimized;
         
         if (this.isMinimized) {
-            this.elements.overlay?.classList.add('minimized');
+            this.elements.menu?.classList.add('minimized');
             this.elements.minimizeBtn.innerHTML = '<i class="fas fa-plus"></i>';
         } else {
-            this.elements.overlay?.classList.remove('minimized');
+            this.elements.menu?.classList.remove('minimized');
             this.elements.minimizeBtn.innerHTML = '<i class="fas fa-minus"></i>';
         }
     }
 
-    hideOverlay() {
-        this.elements.overlay?.classList.add('hidden');
+    hideMenu() {
+        this.elements.menu?.classList.add('hidden');
     }
 
-    showOverlay() {
-        this.elements.overlay?.classList.remove('hidden');
+    showMenu() {
+        this.elements.menu?.classList.remove('hidden');
     }
 
     // Electron-compatible window controls
@@ -853,7 +925,7 @@ class UIController {
         if (window.electronAPI && window.electronAPI.isElectron) {
             await window.electronAPI.closeWindow();
         } else {
-            this.hideOverlay();
+            this.hideMenu();
         }
     }
 

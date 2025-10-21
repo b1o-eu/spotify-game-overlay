@@ -1,4 +1,4 @@
-// Configuration and constants for Spotify Game Overlay
+// Configuration and constants for Spotify Game Menu
 const CONFIG = {
     // Spotify API Configuration
     SPOTIFY: {
@@ -49,7 +49,7 @@ const CONFIG = {
 
     // Hotkeys Configuration
     HOTKEYS: {
-        TOGGLE_OVERLAY: 'ctrl+shift+m',
+        TOGGLE_MENU: 'ctrl+shift+m',
         PLAY_PAUSE: 'ctrl+shift+space',
         NEXT_TRACK: 'ctrl+shift+d',
         PREV_TRACK: 'ctrl+shift+a',
@@ -63,10 +63,10 @@ const CONFIG = {
         REFRESH_TOKEN: 'spotify_refresh_token',
         TOKEN_EXPIRY: 'spotify_token_expiry',
         CLIENT_ID: 'spotify_client_id',
-        SETTINGS: 'overlay_settings',
-        THEME: 'overlay_theme',
-        POSITION: 'overlay_position',
-        OPACITY: 'overlay_opacity'
+        SETTINGS: 'menu_settings',
+        THEME: 'menu_theme',
+        POSITION: 'menu_position',
+        OPACITY: 'menu_opacity'
     },
 
     // Default Settings
@@ -76,7 +76,16 @@ const CONFIG = {
         position: { x: 20, y: 20 },
         autoHide: false,
         showNotifications: true,
-        volume: 50
+        volume: 50,
+        // Default hotkeys (user-customizable, stored in settings)
+        hotkeys: {
+            TOGGLE_MENU: 'ctrl+shift+m',
+            PLAY_PAUSE: 'ctrl+shift+space',
+            NEXT_TRACK: 'ctrl+shift+d',
+            PREV_TRACK: 'ctrl+shift+a',
+            VOLUME_UP: 'ctrl+shift+up',
+            VOLUME_DOWN: 'ctrl+shift+down'
+        }
     }
 };
 

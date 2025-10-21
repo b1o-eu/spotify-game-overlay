@@ -58,8 +58,8 @@ body {
     background: var(--border-light);
 }
 
-/* Main Overlay Container */
-.overlay-container {
+/* Main menu Container */
+.menu-container {
     position: fixed;
     top: 20px;
     right: 20px;
@@ -68,7 +68,7 @@ body {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    /* Remove box-shadow so the overlay appears flush with the desktop */
+    /* Remove box-shadow so the menu appears flush with the desktop */
     box-shadow: none;
     z-index: 9999;
     overflow: hidden;
@@ -76,12 +76,12 @@ body {
     opacity: 0.95;
 }
 
-.overlay-container:hover {
+.menu-container:hover {
     opacity: 1;
 }
 
 /* Header */
-.overlay-header {
+.menu-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -92,15 +92,15 @@ body {
 }
 
 /* Allow dragging the window by the header in Electron (frameless window) */
-.overlay-header {
+.menu-header {
     -webkit-app-region: drag;
 }
 
 /* Prevent interactive controls from being draggable */
-.overlay-header .icon-btn,
-.overlay-header button,
-.overlay-header input,
-.overlay-header select {
+.menu-header .icon-btn,
+.menu-header button,
+.menu-header input,
+.menu-header select {
     -webkit-app-region: no-drag;
 }
 
@@ -659,7 +659,7 @@ body {
 
 /* Responsive Design */
 @media (max-width: 480px) {
-    .overlay-container {
+    .menu-container {
         top: 10px;
         right: 10px;
         left: 10px;

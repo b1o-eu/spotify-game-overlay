@@ -1,5 +1,5 @@
-// Main Application Entry Point for Spotify Game Overlay
-class SpotifyGameOverlay {
+// Main Application Entry Point for Spotify Game Menu
+class SpotifyGameMenu {
     constructor() {
         this.initialized = false;
         this.retryAttempts = 0;
@@ -10,7 +10,7 @@ class SpotifyGameOverlay {
 
     async init() {
         try {
-            console.log('Initializing Spotify Game Overlay...');
+            console.log('Initializing Spotify Game Menu...');
             
             // Wait for DOM to be fully loaded
             if (document.readyState === 'loading') {
@@ -28,10 +28,10 @@ class SpotifyGameOverlay {
             await this.startApplication();
             
             this.initialized = true;
-            console.log('Spotify Game Overlay initialized successfully');
+            console.log('Spotify Game Menu initialized successfully');
             
         } catch (error) {
-            console.error('Failed to initialize overlay:', error);
+            console.error('Failed to initialize menu:', error);
             this.handleInitializationError(error);
         }
     }
@@ -177,20 +177,20 @@ class SpotifyGameOverlay {
     }
 
     handleWindowResize() {
-        // Ensure overlay stays within viewport bounds
-        const overlay = document.getElementById('spotify-overlay');
-        if (!overlay) return;
+        // Ensure menu stays within viewport bounds
+        const menuEl = document.getElementById('spotify-menu');
+        if (!menuEl) return;
         
-        const rect = overlay.getBoundingClientRect();
-        const maxX = window.innerWidth - overlay.offsetWidth;
-        const maxY = window.innerHeight - overlay.offsetHeight;
+        const rect = menuEl.getBoundingClientRect();
+        const maxX = window.innerWidth - menuEl.offsetWidth;
+        const maxY = window.innerHeight - menuEl.offsetHeight;
         
         if (rect.left > maxX || rect.top > maxY) {
             const newX = Math.max(0, Math.min(rect.left, maxX));
             const newY = Math.max(0, Math.min(rect.top, maxY));
             
-            overlay.style.left = `${newX}px`;
-            overlay.style.top = `${newY}px`;
+            menuEl.style.left = `${newX}px`;
+            menuEl.style.top = `${newY}px`;
             
             // Save new position
             window.appState.settings.position = { x: newX, y: newY };
@@ -213,7 +213,7 @@ class SpotifyGameOverlay {
     }
 
     showWelcomeMessage() {
-        const hasShownWelcome = localStorage.getItem('spotify_overlay_welcome_shown');
+        const hasShownWelcome = localStorage.getItem('spotify_menu_welcome_shown');
         
         if (!hasShownWelcome && !window.spotifyAPI.isAuthenticated()) {
             setTimeout(() => {
@@ -222,7 +222,7 @@ class SpotifyGameOverlay {
                     'info',
                     5000
                 );
-                localStorage.setItem('spotify_overlay_welcome_shown', 'true');
+                localStorage.setItem('spotify_menu_welcome_shown', 'true');
             }, 1000);
         }
     }
@@ -280,13 +280,9 @@ class SpotifyGameOverlay {
                     text-align: center;
                     padding: 20px;
                 \">
-                    <div>
-                        <h1 style=\"color: #ff4444; margin-bottom: 20px;\">
-                            Initialization Failed
-                        </h1>
-                        <p style=\"margin-bottom: 20px; color: #b3b3b3;\">
-                            The Spotify Game Overlay failed to initialize properly.
-                        </p>
+                            <div>
+                                <h1 style=\"color: #ff4444; margin-bottom: 20px;\">Initialization Failed</h1>
+                                <p style=\"margin-bottom: 20px; color: #b3b3b3;\">The Spotify Game Menu failed to initialize properly.</p>
                         <p style=\"margin-bottom: 20px; color: #b3b3b3;\">
                             Error: ${error.message || 'Unknown error'}
                         </p>
@@ -350,7 +346,7 @@ class SpotifyGameOverlay {
         
         // Add debug info to overlay
         const debugInfo = document.createElement('div');
-        debugInfo.id = 'debug-info';
+    debugInfo.id = 'debug-info';
         debugInfo.style.cssText = `
             position: fixed;
             top: 10px;
@@ -382,7 +378,7 @@ class SpotifyGameOverlay {
         const state = window.appState ? window.appState.getCurrentState() : {};
         
         debugElement.innerHTML = `
-            <strong>Spotify Game Overlay Debug</strong><br>
+            <strong>Spotify Game Menu Debug</strong><br>
             Initialized: ${status.initialized}<br>
             Authenticated: ${status.authenticated}<br>
             Connected: ${status.connected}<br>
@@ -397,17 +393,17 @@ class SpotifyGameOverlay {
 }
 
 // Initialize the application when the script loads
-const app = new SpotifyGameOverlay();
+const app = new SpotifyGameMenu();
 
 // Make app available globally for debugging
-window.spotifyOverlayApp = app;
+window.spotifyMenuApp = app;
 
 // Add some helpful global functions
-window.debugOverlay = () => app.enableDebugMode();
-window.restartOverlay = () => app.restart();
-window.getOverlayStatus = () => app.getStatus();
+window.debugMenu = () => app.enableDebugMode();
+window.restartMenu = () => app.restart();
+window.getMenuStatus = () => app.getStatus();
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = SpotifyGameOverlay;
+    module.exports = SpotifyGameMenu;
 }

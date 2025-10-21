@@ -1,4 +1,4 @@
-// Electron Main Process for Spotify Game Overlay
+// Electron Main Process for Spotify Game Menu
 const { app, BrowserWindow, protocol, shell, ipcMain, Menu, Tray, nativeImage } = require('electron');
 const path = require('path');
 const { URL } = require('url');
@@ -22,8 +22,8 @@ if (process.env.NODE_ENV === 'development') {
 
 
 function createWindow() {
-    // Create the main application window as a frameless overlay-like window
-    // so the overlay DOM becomes the visible window and can be dragged via CSS.
+    // Create the main application window as a frameless, menu-like window
+    // so the menu DOM becomes the visible window and can be dragged via CSS.
     mainWindow = new BrowserWindow({
     width: 400,
     height: 625,
@@ -103,7 +103,7 @@ function createTray() {
     
     const contextMenu = Menu.buildFromTemplate([
         {
-            label: 'Show Overlay',
+            label: 'Show Menu',
             click: () => {
                 if (mainWindow) {
                     mainWindow.show();
@@ -112,7 +112,7 @@ function createTray() {
             }
         },
         {
-            label: 'Hide Overlay',
+            label: 'Hide Menu',
             click: () => {
                 if (mainWindow) {
                     mainWindow.hide();
@@ -140,7 +140,7 @@ function createTray() {
         }
     ]);
 
-    tray.setToolTip('Spotify Game Overlay');
+    tray.setToolTip('Spotify Game Menu');
     tray.setContextMenu(contextMenu);
     
     // Show window on tray click

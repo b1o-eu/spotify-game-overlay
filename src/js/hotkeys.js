@@ -1,4 +1,4 @@
-// Hotkey Management for Spotify Game Overlay
+// Hotkey Management for Spotify Game Menu
 class HotkeyManager {
     constructor() {
         this.activeHotkeys = new Map();
@@ -10,7 +10,7 @@ class HotkeyManager {
 
     // Initialize default hotkeys
     initializeHotkeys() {
-        this.registerHotkey(CONFIG.HOTKEYS.TOGGLE_OVERLAY, this.toggleOverlay.bind(this));
+        this.registerHotkey(CONFIG.HOTKEYS.TOGGLE_MENU, this.toggleMenu.bind(this));
         this.registerHotkey(CONFIG.HOTKEYS.PLAY_PAUSE, this.togglePlayPause.bind(this));
         this.registerHotkey(CONFIG.HOTKEYS.NEXT_TRACK, this.nextTrack.bind(this));
         this.registerHotkey(CONFIG.HOTKEYS.PREV_TRACK, this.previousTrack.bind(this));
@@ -159,15 +159,15 @@ class HotkeyManager {
     }
 
     // Hotkey action methods
-    toggleOverlay() {
+    toggleMenu() {
         if (window.uiController) {
-            const overlay = document.getElementById('spotify-overlay');
-            if (overlay.classList.contains('hidden')) {
-                window.uiController.showOverlay();
-                window.uiController.showToast('Overlay shown', 'info');
+            const menu = document.getElementById('spotify-menu');
+            if (menu.classList.contains('hidden')) {
+                window.uiController.showMenu();
+                window.uiController.showToast('Menu shown', 'info');
             } else {
-                window.uiController.hideOverlay();
-                window.uiController.showToast('Overlay hidden', 'info');
+                window.uiController.hideMenu();
+                window.uiController.showToast('Menu hidden', 'info');
             }
         }
     }
@@ -265,6 +265,38 @@ class HotkeyManager {
         this.registerHotkey(newCombination, callback, description);
     }
 
+    // Load hotkeys from a settings object (expected keys match CONFIG.HOTKEYS keys)
+    applyHotkeysFromSettings(settingsHotkeys) {
+        if (!settingsHotkeys || typeof settingsHotkeys !== 'object') return;
+
+        const actionMap = {
+            TOGGLE_MENU: this.toggleMenu.bind(this),
+            PLAY_PAUSE: this.togglePlayPause.bind(this),
+            NEXT_TRACK: this.nextTrack.bind(this),
+            PREV_TRACK: this.previousTrack.bind(this),
+            VOLUME_UP: this.volumeUp.bind(this),
+            VOLUME_DOWN: this.volumeDown.bind(this)
+        };
+
+        this.clearAllHotkeys();
+
+        for (const [action, combo] of Object.entries(settingsHotkeys)) {
+            const callback = actionMap[action];
+            if (callback && combo) {
+                try {
+                    this.registerHotkey(combo, callback, action);
+                } catch (e) {
+                    console.warn('[HotkeyManager] Failed to register', action, combo, e);
+                }
+            }
+        }
+    }
+
+    // Utility: capture a key combination from a keyboard event and return normalized combo
+    captureComboFromEvent(event) {
+        return this.eventToKeyCombination(event);
+    }
+
     // Clear all hotkeys
     clearAllHotkeys() {
         this.activeHotkeys.clear();
@@ -289,7 +321,7 @@ class HotkeyManager {
         this.clearAllHotkeys();
         
         const actionMap = {
-            [CONFIG.HOTKEYS.TOGGLE_OVERLAY]: this.toggleOverlay.bind(this),
+            [CONFIG.HOTKEYS.TOGGLE_MENU]: this.toggleMenu.bind(this),
             [CONFIG.HOTKEYS.PLAY_PAUSE]: this.togglePlayPause.bind(this),
             [CONFIG.HOTKEYS.NEXT_TRACK]: this.nextTrack.bind(this),
             [CONFIG.HOTKEYS.PREV_TRACK]: this.previousTrack.bind(this),
@@ -378,4 +410,19 @@ window.hotkeyManager = new HotkeyManager();
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { HotkeyManager, HotkeyUtils };
+}
+
+// Apply saved hotkeys from appState (if available). This allows hotkeys persisted in settings
+// to override the defaults on startup.
+try {
+    if (window.appState && window.appState.settings && window.appState.settings.hotkeys) {
+        window.hotkeyManager.applyHotkeysFromSettings(window.appState.settings.hotkeys);
+    } else if (window.appState && window.appState.settings && window.appState.settings.hotkeys === undefined) {
+        // If no custom hotkeys stored yet, seed from CONFIG.DEFAULTS.hotkeys if present
+        if (typeof CONFIG !== 'undefined' && CONFIG.DEFAULTS && CONFIG.DEFAULTS.hotkeys) {
+            window.hotkeyManager.applyHotkeysFromSettings(CONFIG.DEFAULTS.hotkeys);
+        }
+    }
+} catch (e) {
+    console.warn('[hotkeys] Could not apply saved hotkeys on startup', e);
 }
