@@ -1,5 +1,5 @@
 {
-  "name": "spotify-game-overlay",
+  "name": "spotify-overlay",
   "version": "1.0.0",
   "description": "A lightweight JavaScript-based overlay application that provides seamless Spotify integration for gamers",
   "main": "main.js",
@@ -26,8 +26,8 @@
   "author": "b1o.eu",
   "license": "MIT",
   "build": {
-    "appId": "eu.b1o.spotify-game-overlay",
-    "productName": "Spotify Game Overlay",
+    "appId": "eu.b1o.spotify-overlay",
+    "productName": "Spotify Overlay",
     "directories": {
       "output": "dist"
     },
