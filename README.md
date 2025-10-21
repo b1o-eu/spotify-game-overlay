@@ -1,81 +1,98 @@
-# Spotify Game Menu
+# Spotify Game Overlay
 
-A lightweight JavaScript-based menu application that provides seamless Spotify integration for gamers. This menu allows you to control your music and view track information without alt-tabbing out of your game or needing multiple monitors.
+A sleek, customizable desktop overlay for displaying your currently playing Spotify song. Designed to be unobtrusive and work seamlessly with full-screen games and applications.
 
-This Spotify menu is designed specifically for gamers who want to:
+ <!-- It's highly recommended to add a screenshot! -->
 
-- **Search & Play**: Search for songs and playlists directly from the menu
+## Features
 
-- **Quick Controls**: Play/pause, next, previous, volume and queue management without leaving the game
+*   **Real-time Song Display:** Shows the current track, artist, and album art from Spotify.
+*   **In-Game Overlay:** A transparent, click-through overlay that can be positioned anywhere on your screen.
+*   **Customizable Global Hotkeys:** Control Spotify playback (play/pause, next, previous) from anywhere, even inside a game.
+*   **Modern UI:** A clean, frameless window for configuration and login.
+*   **Secure Spotify Login:** Uses a secure, local-only OAuth 2.0 flow to connect to your Spotify account.
+*   **System Tray Integration:** The app minimizes to the system tray for easy access without cluttering your taskbar.
+*   **Cross-Platform:** Built with Electron to run on Windows, macOS, and Linux.
 
-- **Game-friendly menu positioning**
+## Installation
 
-Getting started
+1.  Go to the [**Releases Page**](../../releases) on GitHub.
+2.  Download the latest installer for your operating system (`.exe` for Windows, `.dmg` for macOS, `.AppImage` or `.deb` for Linux).
+3.  Run the installer and follow the on-screen instructions.
 
-1. **Clone**: `git clone https://github.com/your-username/spotify-game-menu.git`
+## Initial Setup
 
-2. **Install**: `npm install`
+To connect the overlay to your Spotify account, you need to create a Spotify Developer App. This is a one-time setup.
 
-3. **Configure**: Enter your Client ID in the menu settings
+1.  **Go to the Spotify Developer Dashboard** and log in.
+2.  Click **"Create App"**.
+3.  Give your app a **Name** and **Description** (e.g., "My Game Overlay").
+4.  Go to **"App settings"** and add the following **Redirect URI**:
+    *   `http://127.0.0.1:8080/callback`
+5.  Save your changes and copy the **Client ID**.
+6.  Launch the Spotify Game Overlay app and paste the **Client ID** when prompted.
+7.  Click "Connect to Spotify" to authorize the application.
 
-4. **Run**: `npm run dev` for development
+## For Developers
 
-For desktop builds see `DESKTOP.md`.
+Interested in contributing or running the app from the source?
 
-## What This Project Will Be
+### Prerequisites
 
-This Spotify menu is designed specifically for gamers who want to:
-- **View Current Track**: See what's currently playing without leaving your game
-- **Control Playback**: Play, pause, skip, and go back to previous tracks
-- **Browse Queue**: Check upcoming songs in your Spotify queue
-- **Search & Play**: Search for songs and playlists directly from the menu
-- **Volume Control**: Adjust Spotify volume independently from game audio
-- **Minimal Interface**: Clean, unobtrusive UI that won't interfere with gameplay
+*   Node.js (LTS version recommended)
+*   A package manager like `npm` or `yarn`
 
-## Technology Stack
+### Running for Development
 
-- **Frontend**: JavaScript (ES6+), HTML5, CSS3
-- **Desktop**: Electron framework for cross-platform desktop app
-- **API Integration**: Spotify Web API
-- **Authentication**: OAuth 2.0 with Spotify (custom protocol for desktop)
-- **Framework**: Vanilla JavaScript with Electron APIs
-- **Styling**: Modern CSS with responsive design
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/b1o-eu/spotify-game-overlay.git
+    cd spotify-game-overlay
+    ```
 
-## Key Features (Planned)
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
 
-- Real-time now playing display
-- Full playback controls (play, pause, skip, previous)
-- Queue management and visualization
-- Search functionality for tracks, artists, and playlists
-- Independent volume control
-- Customizable hotkeys for quick actions
-- Game-friendly menu positioning
-- Responsive design for different screen sizes
-- Dark/light theme options
-- Cross-platform desktop app (Windows, macOS, Linux)
+3.  Run the application in development mode (with hot-reloading):
+    ```bash
+    npm run dev
+    ```
 
-## Installation & Setup
+### Building for Production
 
-### Option 1: Desktop App (Recommended)
+You can build the application for your desired platform using the following commands. The output will be in the `dist/` directory.
 
-1. **Download**: Get the latest release for your platform from the [Releases](../../releases) page
-2. **Install**: Run the installer (.exe for Windows, .dmg for macOS, .AppImage for Linux)
-3. **Setup**: Follow the [Desktop Setup Guide](DESKTOP.md) for configuration
+```bash
+# Build for the current platform
+npm run build
 
-### Option 2: Web Version
+# Build for a specific platform
+npm run build-win    # Windows
+npm run build-mac    # macOS
+npm run build-linux  # Linux
+```
 
-1. **Clone**: `git clone https://github.com/your-username/spotify-game-menu.git`
-2. **Install**: `npm install`
-3. **Run**: `npm run web-dev`
-4. **Setup**: Configure your Spotify Client ID in the app settings
+### Technical Overview
 
-### Quick Start
+This application is built using Electron and follows modern security best practices.
 
-1. **Spotify App**: Create a Spotify Developer App at [developer.spotify.com](https://developer.spotify.com/dashboard)
-2. **Client ID**: Copy your Client ID from the Spotify app dashboard
-3. **Configure**: Enter your Client ID in the menu settings
-4. **Authorize**: Click "Connect to Spotify" to authorize the app
+*   **Process Sandboxing:** The renderer process (UI) is sandboxed from Node.js APIs.
+*   **Context Isolation:** `contextBridge` is used to securely expose specific functions from the main process to the renderer, preventing leakage of privileged APIs.
+*   **IPC Communication:** All communication between the UI and the back-end (e.g., registering hotkeys, resizing windows) is done via secure asynchronous IPC channels.
+*   **Local OAuth Server:** A temporary local HTTP server is used solely to handle the OAuth 2.0 redirect from Spotify, ensuring that authentication tokens are handled securely on the user's machine.
 
-## Target Audience
+## Contributing
 
-Perfect for gamers, streamers, and anyone who wants quick access to Spotify controls without interrupting their current application or workflow.
+Contributions are welcome! Please feel free to fork the repository, make your changes, and submit a pull request.
+
+1.  Fork the repository.
+2.  Create your feature branch (`git checkout -b feature/AmazingFeature`).
+3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`).
+4.  Push to the branch (`git push origin feature/AmazingFeature`).
+5.  Open a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the `LICENSE` file for details.

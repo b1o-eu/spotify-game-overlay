@@ -1,6 +1,6 @@
-# Spotify Game Menu - Desktop App Setup
+# Spotify Game Overlay - Developer Guide
 
-This guide will help you build and run the Spotify Game Menu as a standalone desktop application.
+This guide provides technical details for developers working on the Electron desktop application. For user-facing installation and setup, please see the main [README.md](README.md).
 
 ## Prerequisites
 
@@ -8,28 +8,20 @@ This guide will help you build and run the Spotify Game Menu as a standalone des
 - npm or yarn package manager
 - A Spotify Developer App (for Client ID)
 
-## Setup Steps
+## Development
 
-### 1. Install Dependencies
+1.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
 
-```bash
-npm install
-```
+2.  **Run in Development Mode**
+    ```bash
+    npm run dev
+    ```
+    This will open the app with hot-reloading and developer tools enabled.
 
-### 2. Configure Spotify App
-
-1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-2. Create a new app or use an existing one
-
-### 3. Run in Development Mode
-
-```bash
-npm start
-```
-
-This will open the app in development mode with developer tools enabled.
-
-### 4. Build for Production
+## Building for Production
 
 ```bash
 # Build for current platform

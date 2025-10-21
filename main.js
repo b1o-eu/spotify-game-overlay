@@ -6,6 +6,9 @@ const { URL } = require('url');
 const http = require('http');
 const fs = require('fs');
 
+// Constants
+const OAUTH_PORT = 8080;
+
 // Keep a global reference of the window object
 let mainWindow;
 let tray = null;
@@ -117,7 +120,7 @@ function createOverlayWindow() {
             resizable: false,
             fullscreenable: true,
             webPreferences: {
-                preload: path.join(__dirname, 'src', 'js', 'overlay-preload.js'),
+                preload: path.join(__dirname, 'overlay-preload.js'),
                 contextIsolation: true,
                 nodeIntegration: false
             }
@@ -209,9 +212,9 @@ app.whenReady().then(() => {
         }
     });
 
-    server.on('listening', () => console.log('[Main] OAuth HTTP server listening on http://127.0.0.1:8080'));
+    server.on('listening', () => console.log(`[Main] OAuth HTTP server listening on http://127.0.0.1:${OAUTH_PORT}`));
     server.on('error', (err) => console.error('[Main] OAuth HTTP server error:', err));
-    server.listen(8080);
+    server.listen(OAUTH_PORT);
 
     createWindow();
     // Create a separate overlay window that can be always-on-top and click-through
