@@ -128,7 +128,7 @@
             });
 
             // Create visibility toggles inside each widget, only visible in edit mode
-            [this.nowPlaying, this.upNext].forEach(widget => {
+            [this.nowPlaying, this.upNext, this.toastArea].forEach(widget => {
                 const id = widget.dataset.widgetId;
                 const toggle = document.createElement('div');
                 toggle.className = 'overlay-widget-toggle';
@@ -138,6 +138,11 @@
                     e.stopPropagation();
                     this.toggleWidgetVisibility(id);
                 });
+                // Set initial icon state
+                const isVisible = this.widgetVisibility[id] ?? true;
+                if (!isVisible) {
+                    toggle.querySelector('i').classList.replace('fa-eye', 'fa-eye-slash');
+                }
                 widget.appendChild(toggle);
             });
 
@@ -219,6 +224,13 @@
                 // If running as a native overlay window, ask main process to make the window focusable/clickable
 
                 // Show the "Finish Editing" button
+                // Also ensure the toast area is visible for positioning, even if empty.
+                if (this.toastArea) {
+                    this.toastArea.style.display = 'flex'; // Use flex as it's a flex container
+                    // To make it more obvious, we can add a placeholder toast
+                    this.showToast('Toasts appear here', 'info', 999999, true);
+                }
+
                 if (editControls) editControls.style.display = 'block';
                 if (finishBtn && !finishBtn.dataset.listenerAttached) {
                     finishBtn.addEventListener('click', () => this.toggleEditMode(false));
@@ -239,6 +251,13 @@
                 [this.nowPlaying, this.upNext, this.toastArea].forEach(el => el.style.pointerEvents = 'none');
 
                 // Hide the "Finish Editing" button
+                if (this.toastArea) {
+                    // Hide placeholder toasts when exiting edit mode
+                    const placeholderToasts = this.toastArea.querySelectorAll('.placeholder-toast');
+                    placeholderToasts.forEach(t => t.remove());
+                    // If there are no real toasts, it will become invisible again.
+                    if (this.toastArea.childElementCount === 0) this.toastArea.style.display = '';
+                }
                 if (editControls) editControls.style.display = 'none';
 
                 this.savePositions();
@@ -324,6 +343,10 @@
             const el = this.container.querySelector(`[data-widget-id="${widgetId}"]`);
             if (el) {
                 el.classList.toggle('widget-hidden-in-edit', !isVisible);
+                // Also update the icon inside the toggle button
+                const icon = el.querySelector('.overlay-widget-toggle i');
+                if (icon) icon.classList.toggle('fa-eye-slash', !isVisible);
+                if (icon) icon.classList.toggle('fa-eye', isVisible);
                 // Visibility outside of edit mode is handled by renderUpNext and a new applyVisibility method
                 this.applyVisibility();
             }
@@ -607,11 +630,11 @@
         loadWidgetVisibility() {
             try {
                 const raw = localStorage.getItem(WIDGET_VISIBILITY_KEY);
-                // Default all widgets to visible
-                return raw ? JSON.parse(raw) : { nowPlaying: true, upNext: true };
+                const defaults = { nowPlaying: true, upNext: true, toasts: true };
+                return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
             } catch (e) {
                 console.warn('[OverlayManager] failed to load widget visibility', e);
-                return { nowPlaying: true, upNext: true };
+                return { nowPlaying: true, upNext: true, toasts: true };
             }
         }
 
@@ -639,10 +662,17 @@
             return out;
         }
 
-        showToast(message, type = 'info') {
+        showToast(message, type = 'info', duration, isPlaceholder = false) {
             if (!this.toastArea) return;
+            // Do not show toasts if the widget is hidden, unless it's a placeholder in edit mode
+            const isToastsVisible = this.widgetVisibility.toasts ?? true;
+            if (!isToastsVisible && !isPlaceholder) return;
 
             try {
+                // In non-edit mode, if the toast area is hidden, make it visible
+                if (!this.editMode && this.toastArea.style.display === 'none') {
+                    this.toastArea.style.display = 'flex';
+                }
                 const icons = {
                     success: 'fa-check-circle',
                     error: 'fa-exclamation-circle',
@@ -652,12 +682,19 @@
 
                 const toast = document.createElement('div');
                 toast.className = `overlay-toast ${type}`;
+                if (isPlaceholder) toast.classList.add('placeholder-toast');
                 toast.innerHTML = `<i class="fas ${icons[type] || icons.info} overlay-toast-icon"></i><span class="overlay-toast-message">${message}</span>`;
                 
                 this.toastArea.appendChild(toast);
 
-                const duration = (window.CONFIG && window.CONFIG.UI && window.CONFIG.UI.TOAST_DURATION) || 3000;
-                setTimeout(() => toast.remove(), duration);
+                const finalDuration = duration || (window.CONFIG && window.CONFIG.UI && window.CONFIG.UI.TOAST_DURATION) || 3000;
+                setTimeout(() => {
+                    toast.remove();
+                    // If it was the last toast, hide the container again (unless in edit mode)
+                    if (!this.editMode && this.toastArea.childElementCount === 0) {
+                        this.toastArea.style.display = ''; // Revert to default display
+                    }
+                }, finalDuration);
             } catch (e) {
                 console.error('[OverlayManager] showToast error:', e);
             }

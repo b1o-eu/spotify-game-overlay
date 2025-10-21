@@ -480,17 +480,17 @@
     color: rgba(255, 255, 255, 0.95);
 }
 
-/* Toast area */
+/* Toast area widget */
 .overlay-toast-area {
-    --overlay-toast-width: 280px;
-    width: var(--overlay-toast-width);
+    /* Inherit base widget styles */
+    --overlay-width: 260px;
     max-height: 40vh;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    right: 20px;
-    bottom: 20px;
     overflow: hidden;
+    /* Remove padding so toasts can sit flush inside */
+    padding: 0;
 }
 
 .overlay-toast {
