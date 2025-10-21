@@ -87,8 +87,8 @@ http-server -p 8080
 ### Hotkeys (Global)
 - `Ctrl+Shift+M`: Toggle menu visibility
 - `Ctrl+Shift+Space`: Play/Pause
-- `Ctrl+Shift+Right`: Next track
-- `Ctrl+Shift+Left`: Previous track
+- `Ctrl+Shift+D`: Next track
+- `Ctrl+Shift+A`: Previous track
 - `Ctrl+Shift+Up`: Volume up
 - `Ctrl+Shift+Down`: Volume down
 
