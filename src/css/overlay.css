@@ -302,3 +302,115 @@
 .search-results::-webkit-scrollbar-thumb:hover {
     background: var(--border-light);
 }
+
+/* Overlay widgets */
+.global-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none; /* default: don't block input */
+    z-index: 10002;
+}
+
+/* Ensure overlay defaults to white text for readability */
+.global-overlay, .global-overlay * {
+    color: #ffffff;
+}
+
+.overlay-widget {
+    min-width: 200px;
+    max-width: 420px;
+    background: rgba(20,20,20,0.6);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 8px 10px;
+    border-radius: 8px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* Stronger opaque variant for overlay window readability */
+.global-overlay.overlay-opaque .overlay-widget {
+    background: rgba(14,14,14,0.86);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+}
+
+.overlay-widget.dragging {
+    transform: scale(1.02);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+}
+
+.overlay-widget .overlay-album img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.now-playing-widget {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.overlay-meta .overlay-track {
+    font-weight: 600;
+}
+
+.overlay-meta .overlay-artist {
+    font-size: 12px;
+    color: rgba(255,255,255,0.85);
+}
+
+.up-next-widget .overlay-upnext-header {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.overlay-upnext-list .overlay-upnext-item {
+    font-size: 13px;
+    color: #ffffff;
+    padding: 4px 0;
+}
+
+/* Toast area */
+.overlay-toast-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    right: 20px;
+    bottom: 20px;
+}
+
+.overlay-toast {
+    background: rgba(16,16,16,0.75);
+    color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    min-width: 220px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+}
+
+/* Opaque toasts variant for overlay windows (higher contrast) */
+.global-overlay.overlay-opaque .overlay-toast {
+    background: rgba(10,10,10,0.95);
+    color: #ffffff;
+}
+
+.overlay-toast.success { border-left: 4px solid var(--success-color); }
+.overlay-toast.error { border-left: 4px solid var(--error-color); }
+.overlay-toast.warning { border-left: 4px solid var(--warning-color); }
+
+/* Edit mode visuals */
+.global-overlay.overlay-edit-mode { pointer-events: auto; }
+.global-overlay.overlay-edit-mode .overlay-widget { outline: 1px dashed rgba(255,255,255,0.12); }
+.overlay-widget::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+}
+
+/* Prevent overlay from blocking mouse when not editing */
+.global-overlay:not(.overlay-edit-mode) { pointer-events: none; }
+.global-overlay:not(.overlay-edit-mode) .overlay-widget { pointer-events: none; }

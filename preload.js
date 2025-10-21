@@ -26,6 +26,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onGlobalHotkey: (callback) => {
         ipcRenderer.on('global-hotkey', (event, action) => callback(action));
     },
+    // Forward overlay updates to main process which will forward to overlay window
+    forwardOverlayUpdate: (msg) => ipcRenderer.send('overlay-forward', msg),
     
     // Open external URLs in the user's default browser
     openExternal: (url) => ipcRenderer.invoke('open-external', url),

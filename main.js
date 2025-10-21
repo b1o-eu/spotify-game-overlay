@@ -1,5 +1,5 @@
 // Electron Main Process for Spotify Game Menu
-const { app, BrowserWindow, protocol, shell, ipcMain, Menu, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, protocol, shell, ipcMain, Menu, Tray, nativeImage, screen } = require('electron');
 const { globalShortcut } = require('electron');
 const path = require('path');
 const { URL } = require('url');
@@ -9,6 +9,7 @@ const fs = require('fs');
 // Keep a global reference of the window object
 let mainWindow;
 let tray = null;
+let overlayWindow = null;
 
 // Enable live reload for development
 if (process.env.NODE_ENV === 'development') {
@@ -92,6 +93,45 @@ function createWindow() {
     // Open DevTools in development
     if (process.env.NODE_ENV === 'development') {
         mainWindow.webContents.openDevTools();
+    }
+}
+
+function createOverlayWindow() {
+    if (overlayWindow) return;
+
+    try {
+        const primary = screen.getPrimaryDisplay();
+        const { width, height } = primary.size;
+
+        overlayWindow = new BrowserWindow({
+            x: 0,
+            y: 0,
+            width,
+            height,
+            frame: false,
+            transparent: true,
+            hasShadow: false,
+            alwaysOnTop: true,
+            skipTaskbar: true,
+            focusable: false, // start as click-through
+            resizable: false,
+            fullscreenable: true,
+            webPreferences: {
+                preload: path.join(__dirname, 'src', 'js', 'overlay-preload.js'),
+                contextIsolation: true,
+                nodeIntegration: false
+            }
+        });
+
+        // Make the window click-through by default
+        try { overlayWindow.setIgnoreMouseEvents(true, { forward: true }); } catch (e) {}
+
+        overlayWindow.loadFile(path.join(__dirname, 'overlay.html'));
+        overlayWindow.webContents.setBackgroundThrottling(false);
+
+        overlayWindow.on('closed', () => { overlayWindow = null; });
+    } catch (e) {
+        console.error('[Main] createOverlayWindow failed', e);
     }
 }
 
@@ -203,6 +243,8 @@ app.whenReady().then(() => {
     server.listen(8080);
 
     createWindow();
+    // Create a separate overlay window that can be always-on-top and click-through
+    createOverlayWindow();
     createTray();
 
     app.on('activate', () => {
@@ -348,4 +390,28 @@ ipcMain.handle('unregister-global-hotkeys', () => {
         return false;
     }
 });
+
+// Allow overlay preload to ask main to toggle click-through behavior
+ipcMain.on('overlay-set-ignore-mouse', (event, ignore) => {
+    try {
+        if (!overlayWindow) return;
+        overlayWindow.setIgnoreMouseEvents(!!ignore, { forward: true });
+        // Make focusable when not ignoring mouse so user can interact in edit mode
+        overlayWindow.setFocusable(!ignore);
+        if (!ignore) overlayWindow.focus();
+    } catch (e) {
+        console.error('[Main] overlay-set-ignore-mouse error', e);
+    }
+});
+
+// Forward updates from renderer to overlay window
+ipcMain.on('overlay-forward', (event, msg) => {
+    try {
+        if (!overlayWindow || overlayWindow.isDestroyed()) return;
+        overlayWindow.webContents.send('overlay-update', msg);
+    } catch (e) {
+        console.error('[Main] overlay-forward error', e);
+    }
+});
+
 

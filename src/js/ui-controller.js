@@ -157,6 +157,29 @@ class UIController {
         this.elements.connectSpotifySettingsBtn?.addEventListener('click', this.connectFromSettings.bind(this));
         this.elements.saveSettingsBtn?.addEventListener('click', this.saveSettings.bind(this));
         this.elements.resetSettingsBtn?.addEventListener('click', this.resetSettings.bind(this));
+        // Edit overlay button (toggles overlay edit mode when available)
+        const editOverlayBtn = document.getElementById('edit-overlay-btn');
+        editOverlayBtn?.addEventListener('click', () => {
+            try {
+                // If running in Electron, forward a command so the overlay BrowserWindow toggles edit mode
+                if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.forwardOverlayUpdate === 'function') {
+                    window.electronAPI.forwardOverlayUpdate({ type: 'COMMAND', data: { action: 'toggleEditMode' } });
+                    this.showToast('Toggling overlay edit mode', 'info');
+                    return;
+                }
+
+                // Fallback for web-only mode: try to toggle local overlayManager
+                if (window.overlayManager && typeof window.overlayManager.toggleEditMode === 'function') {
+                    window.overlayManager.toggleEditMode();
+                    const mode = window.overlayManager.editMode ? 'enabled' : 'disabled';
+                    this.showToast(`Overlay edit mode ${mode}`, 'info');
+                } else {
+                    this.showToast('Overlay manager not available', 'warning');
+                }
+            } catch (e) {
+                console.error('Failed to toggle overlay edit mode', e);
+            }
+        });
     // Global hotkeys checkbox
     this.elements.globalHotkeysCheckbox?.addEventListener('change', this.handleGlobalHotkeysToggle.bind(this));
 
@@ -262,6 +285,15 @@ class UIController {
             case 'searchResults':
                 this.updateSearchResults(data);
                 break;
+        }
+
+        // Forward to overlay window (main process will forward to overlay BrowserWindow)
+        try {
+            if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.forwardOverlayUpdate === 'function') {
+                window.electronAPI.forwardOverlayUpdate({ type, data });
+            }
+        } catch (e) {
+            // Non-fatal
         }
     }
 
