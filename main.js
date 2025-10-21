@@ -115,22 +115,39 @@ function createOverlayWindow() {
             transparent: true,
             hasShadow: false,
             alwaysOnTop: true,
+            show: true, // Make sure the window is visible on creation
             skipTaskbar: true,
-            focusable: false, // start as click-through
+            focusable: true, // Initially focusable to ensure it shows
             resizable: false,
             fullscreenable: true,
             webPreferences: {
-                preload: path.join(__dirname, 'overlay-preload.js'),
+                preload: path.join(__dirname, 'src', 'js', 'overlay-preload.js'),
                 contextIsolation: true,
                 nodeIntegration: false
             }
         });
-
-        // Make the window click-through by default
+        
+        // Immediately make the window click-through and non-focusable
         try { overlayWindow.setIgnoreMouseEvents(true, { forward: true }); } catch (e) {}
 
         overlayWindow.loadFile(path.join(__dirname, 'overlay.html'));
         overlayWindow.webContents.setBackgroundThrottling(false);
+
+        // Debug logging and ensure window is shown after content loads
+        overlayWindow.webContents.on('did-finish-load', () => {
+            console.log('[Main] Overlay window content loaded');
+            overlayWindow.showInactive(); // Show without stealing focus
+            console.log('[Main] Overlay window shown, visible:', overlayWindow.isVisible());
+        });
+
+        overlayWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+            console.log('[Overlay Console]', message);
+        });
+
+        // Open DevTools in development for debugging
+        if (process.env.NODE_ENV === 'development') {
+            overlayWindow.webContents.openDevTools({ mode: 'detach' });
+        }
 
         overlayWindow.on('closed', () => { overlayWindow = null; });
     } catch (e) {

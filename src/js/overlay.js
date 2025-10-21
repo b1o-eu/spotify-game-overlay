@@ -56,18 +56,19 @@
                         }
                     };
                 }
-                window.addEventListener('appStateChange', this.handleAppState.bind(this));
-                // If running as a separate Electron overlay window, main process can forward
-                // app state updates via an IPC helper exposed on window.electronAPI.
-                if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.onOverlayUpdate === 'function') {
-                    try {
-                        window.electronAPI.onOverlayUpdate((msg) => {
-                            // Expect msg to be { type, data }
-                            if (!msg || !msg.type) return;
-                            this.handleAppState({ detail: msg });
-                        });
-                    } catch (e) {
-                        console.warn('[OverlayManager] failed to register onOverlayUpdate', e);
+                // Listen for state changes ONLY in the overlay window
+                if (this.isOverlayWindow) {
+                    window.addEventListener('appStateChange', this.handleAppState.bind(this));
+                    if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.onOverlayUpdate === 'function') {
+                        try {
+                            window.electronAPI.onOverlayUpdate((msg) => {
+                                if (!msg || !msg.type) return;
+                                // The event from main process is the detail itself
+                                this.handleAppState({ detail: msg }); 
+                            });
+                        } catch (e) {
+                            console.warn('[OverlayManager] failed to register onOverlayUpdate', e);
+                        }
                     }
                 }
             } catch (e) {
