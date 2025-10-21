@@ -6,9 +6,9 @@ const CONFIG = {
         REDIRECT_URI: (() => {
             // Check if running in Electron
             if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.isElectron) {
-                // Electron hosts a local HTTPS server on port 8080 (see main.js)
-                // Using HTTPS to satisfy stricter redirect URI security requirements.
-                return 'https://localhost:8080/callback';
+                // Electron hosts a local HTTP server on port 8080 (see main.js)
+                // Use loopback HTTP redirect (127.0.0.1) to satisfy Spotify's strict loopback requirement
+                return 'http://127.0.0.1:8080/callback';
             }
             // Fallback for web version
             try {
@@ -21,7 +21,7 @@ const CONFIG = {
                 }
             } catch (_) {}
             // Sensible default for docs/quick start (also add this in Spotify Dashboard)
-            return 'https://localhost:8080/callback';
+            return 'http://127.0.0.1:8080/callback';
         })(),
         SCOPES: [
             'user-read-playback-state',

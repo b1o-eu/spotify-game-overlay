@@ -17,10 +17,10 @@
 4. Fill in the details:
    - **App Name**: Spotify Game Overlay
    - **App Description**: Gaming overlay for Spotify control
-    - **Website**: https://localhost:8080
+    - **Website**: http://127.0.0.1:8080
     - **Redirect URIs**: add BOTH of the following so either Electron or Web flow works
-       - https://localhost:8080/callback (Electron app)
-       - http://localhost:5500/callback.html (Web via Live Server; ensure it matches your actual port)
+       - http://127.0.0.1:8080/callback (Electron app)
+       - http://127.0.0.1:5500/callback.html (Web via Live Server; ensure it matches your actual port)
 5. Accept the terms and create the app
 6. Copy your **Client ID** (you'll need this later)
 
@@ -58,7 +58,7 @@ http-server -p 8080
 
 ### 3. Configure the Overlay
 
-1. Open your browser and go to `http://localhost:8080`
+1. Open your browser and go to `http://127.0.0.1:8080`
 2. Click the settings button in the overlay header
 3. Enter your Spotify **Client ID** from step 1
 4. Click "Save Settings"
@@ -103,8 +103,8 @@ http-server -p 8080
 ### "Authentication Error" or `INVALID_CLIENT: Insecure redirect URI`
 - Make sure your Client ID is correct
 - Verify the Redirect URI in the Spotify Dashboard EXACTLY matches what the app is using:
-   - Electron app: `https://localhost:8080/callback`
-   - Browser with Live Server: `${window.location.origin}/callback.html` (e.g., `http://localhost:5500/callback.html`)
+   - Electron app: `http://127.0.0.1:8080/callback`
+   - Browser with Live Server: `${window.location.origin}/callback.html` (e.g., `http://127.0.0.1:5500/callback.html`)
 - If your Live Server uses a different port, update the Redirect URI accordingly in the Spotify Dashboard and try again.
 - If your Live Server uses a different port, update the Redirect URI accordingly in the Spotify Dashboard and try again.
 

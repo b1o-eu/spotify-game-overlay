@@ -64,7 +64,9 @@ class SpotifyAPI {
         if (window.electronAPI && typeof window.electronAPI.onSpotifyCallback === 'function') {
             window.electronAPI.onSpotifyCallback((params) => {
                 try {
+                    console.debug('[SpotifyAPI] Received ipc callback params from main:', params);
                     this.handleOAuthCallback(params);
+                    console.debug('[SpotifyAPI] handleOAuthCallback completed');
                 } catch (e) {
                     console.error('Failed to handle Electron OAuth callback:', e);
                 }
@@ -84,9 +86,10 @@ class SpotifyAPI {
                 if (window.uiController && typeof window.uiController.showToast === 'function') {
                     const err = String(error).toLowerCase();
                     if (err.includes('insecure')) {
-                        window.uiController.showToast('Spotify rejected the redirect URI as insecure. Add http://localhost:8080/callback to your Spotify app Redirect URIs.', 'error', 6000);
+                        // Give clearer guidance depending on environment: Electron uses HTTPS on port 8080, web dev servers use HTTP with callback.html
+                        window.uiController.showToast('Spotify rejected the redirect URI as insecure. Register the exact URI you are using in the Spotify Dashboard: for the desktop app use http://127.0.0.1:8080/callback; for the web/dev server use http://<host>:<port>/callback.html (e.g. http://127.0.0.1:5500/callback.html).', 'error', 9000);
                     } else if (err.includes('invalid')) {
-                        window.uiController.showToast('Spotify says the redirect URI is invalid. Ensure it exactly matches your app settings.', 'error', 6000);
+                        window.uiController.showToast('Spotify says the redirect URI is invalid. Ensure it exactly matches the Redirect URI(s) listed in your Spotify Developer App (scheme, host, port and path must match).', 'error', 6000);
                     } else {
                         window.uiController.showToast(`Spotify auth error: ${error}`,'error',5000);
                     }

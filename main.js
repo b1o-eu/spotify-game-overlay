@@ -2,9 +2,8 @@
 const { app, BrowserWindow, protocol, shell, ipcMain, Menu, Tray, nativeImage } = require('electron');
 const path = require('path');
 const { URL } = require('url');
-const https = require('https');
+const http = require('http');
 const fs = require('fs');
-const selfsigned = require('selfsigned');
 
 // Keep a global reference of the window object
 let mainWindow;
@@ -152,33 +151,25 @@ function createTray() {
 
 // App event handlers
 app.whenReady().then(() => {
-    // Generate a self-signed certificate for localhost (runtime-only)
-    const attrs = [{ name: 'commonName', value: 'localhost' }];
-    const pems = selfsigned.generate(attrs, {
-        days: 365,
-        keySize: 2048,
-        algorithm: 'sha256',
-        extensions: [
-            { name: 'basicConstraints', cA: true },
-            {
-                name: 'subjectAltName',
-                altNames: [
-                    { type: 2, value: 'localhost' }, // DNS
-                    { type: 7, ip: '127.0.0.1' } // IP
-                ]
-            }
-        ]
-    });
-
-    // Create an HTTPS server for the OAuth callback
-    const server = https.createServer({ key: pems.private, cert: pems.cert }, (req, res) => {
+    // Create an HTTP server for the OAuth callback on 127.0.0.1:8080 (loopback)
+    // Using plain HTTP for a loopback redirect avoids issues with self-signed certs
+    const server = http.createServer((req, res) => {
+        console.log('[Main] HTTP server received request:', req.method, req.url);
         if (req.url.startsWith('/callback')) {
             // If the callback includes query params (e.g., ?code=...&state=...), forward to renderer
             const queryIndex = req.url.indexOf('?');
             if (queryIndex !== -1 && mainWindow && !mainWindow.isDestroyed()) {
                 const params = req.url.substring(queryIndex + 1);
+                console.log('[Main] OAuth callback params detected, forwarding to renderer:', params);
                 // Notify renderer so it can exchange the code for tokens
-                mainWindow.webContents.send('spotify-oauth-callback', params);
+                try {
+                    mainWindow.webContents.send('spotify-oauth-callback', params);
+                    console.log('[Main] Forwarded spotify-oauth-callback to renderer');
+                } catch (e) {
+                    console.error('[Main] Failed to forward callback to renderer:', e);
+                }
+            } else {
+                console.log('[Main] Callback received but no query params or renderer not ready');
             }
 
             fs.readFile(path.join(__dirname, 'callback.html'), (err, data) => {
@@ -187,24 +178,18 @@ app.whenReady().then(() => {
                     res.end(JSON.stringify(err));
                     return;
                 }
-                res.writeHead(200);
+                res.writeHead(200, { 'Content-Type': 'text/html' });
                 res.end(data);
             });
         } else {
             res.writeHead(404);
             res.end('Not Found');
         }
-    }).listen(8080);
-
-    // Allow our self-signed localhost certificate inside Electron windows
-    app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
-        if (url.startsWith('https://localhost:8080')) {
-            event.preventDefault();
-            callback(true);
-        } else {
-            callback(false);
-        }
     });
+
+    server.on('listening', () => console.log('[Main] OAuth HTTP server listening on http://127.0.0.1:8080'));
+    server.on('error', (err) => console.error('[Main] OAuth HTTP server error:', err));
+    server.listen(8080);
 
     createWindow();
     createTray();
