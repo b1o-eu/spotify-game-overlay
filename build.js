@@ -58,9 +58,9 @@ function build(platform) {
 
             const child = exec(command, (error, stdout, stderr) => {
                 if (error) {
-                    const fullErrorLog = `${(error?.message || '')}\n${capturedStderr}`;
+                    const fullErrorLog = `${error.message || ''}\n${capturedStderr}`;
                     // If this looks like a transient file-lock (EBUSY), retry with backoff
-                    if (attempt < maxAttempts && /EBUSY|resource busy|locked/i.test(fullErrorLog)) {
+                    if (attempt < maxAttempts && /EBUSY|resource busy or locked/i.test(fullErrorLog)) {
                         const backoff = 300 * attempt;
                         console.warn(`Transient error detected (attempt ${attempt}): ${fullErrorLog.split('\n')[0]}`);
                         console.warn(`Retrying in ${backoff}ms...`);
