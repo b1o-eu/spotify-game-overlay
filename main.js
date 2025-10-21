@@ -389,3 +389,13 @@ ipcMain.on('overlay-forward', (event, msg) => {
         console.error('[Main] overlay-forward error', e);
     }
 });
+
+// IPC handler to toggle overlay visibility
+ipcMain.on('toggle-overlay', () => {
+    if (!overlayWindow) return;
+    if (overlayWindow.isVisible()) {
+        overlayWindow.hide();
+    } else {
+        overlayWindow.show();
+    }
+});

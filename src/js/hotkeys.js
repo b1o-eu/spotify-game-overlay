@@ -10,7 +10,7 @@ class HotkeyManager {
 
     // Initialize default hotkeys
     initializeHotkeys() {
-        this.registerHotkey(CONFIG.HOTKEYS.TOGGLE_MENU, this.toggleMenu.bind(this));
+        this.registerHotkey(CONFIG.HOTKEYS.TOGGLE_OVERLAY, this.toggleOverlay.bind(this));
         this.registerHotkey(CONFIG.HOTKEYS.PLAY_PAUSE, this.togglePlayPause.bind(this));
         this.registerHotkey(CONFIG.HOTKEYS.NEXT_TRACK, this.nextTrack.bind(this));
         this.registerHotkey(CONFIG.HOTKEYS.PREV_TRACK, this.previousTrack.bind(this));
@@ -159,17 +159,15 @@ class HotkeyManager {
     }
 
     // Hotkey action methods
-    toggleMenu() {
-        if (window.uiController) {
-            const menu = document.getElementById('spotify-menu');
-            if (menu.classList.contains('hidden')) {
-                window.uiController.showMenu();
-                window.uiController.showToast('Menu shown', 'info');
-            } else {
-                window.uiController.hideMenu();
-                window.uiController.showToast('Menu hidden', 'info');
-            }
+    toggleOverlay() {
+        // In Electron, this will toggle the visibility of the overlay window.
+        if (window.electronAPI && window.electronAPI.isElectron) {
+            window.electronAPI.toggleOverlay();
+            // We don't know the new state, so a generic toast is best.
+            window.uiController?.showToast('Overlay toggled', 'info');
+            return;
         }
+        // Fallback for web version if needed in the future.
     }
 
     async togglePlayPause() {
@@ -270,7 +268,7 @@ class HotkeyManager {
         if (!settingsHotkeys || typeof settingsHotkeys !== 'object') return;
 
         const actionMap = {
-            TOGGLE_MENU: this.toggleMenu.bind(this),
+            TOGGLE_OVERLAY: this.toggleOverlay.bind(this),
             PLAY_PAUSE: this.togglePlayPause.bind(this),
             NEXT_TRACK: this.nextTrack.bind(this),
             PREV_TRACK: this.previousTrack.bind(this),
@@ -321,7 +319,7 @@ class HotkeyManager {
         this.clearAllHotkeys();
         
         const actionMap = {
-            [CONFIG.HOTKEYS.TOGGLE_MENU]: this.toggleMenu.bind(this),
+            [CONFIG.HOTKEYS.TOGGLE_OVERLAY]: this.toggleOverlay.bind(this),
             [CONFIG.HOTKEYS.PLAY_PAUSE]: this.togglePlayPause.bind(this),
             [CONFIG.HOTKEYS.NEXT_TRACK]: this.nextTrack.bind(this),
             [CONFIG.HOTKEYS.PREV_TRACK]: this.previousTrack.bind(this),

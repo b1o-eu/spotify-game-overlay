@@ -28,6 +28,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     // Forward overlay updates to main process which will forward to overlay window
     forwardOverlayUpdate: (msg) => ipcRenderer.send('overlay-forward', msg),
+
+    // Toggle overlay visibility
+    toggleOverlay: () => ipcRenderer.send('toggle-overlay'),
     
     // Open external URLs in the user's default browser
     openExternal: (url) => ipcRenderer.invoke('open-external', url),

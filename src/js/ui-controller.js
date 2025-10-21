@@ -201,7 +201,7 @@ class UIController {
 
         // Hotkey inputs: capture when focused
         const hotInputs = [
-            { el: this.elements.hotkeyToggle, key: 'TOGGLE_MENU' },
+            { el: this.elements.hotkeyToggle, key: 'TOGGLE_OVERLAY' },
             { el: this.elements.hotkeyPlayPause, key: 'PLAY_PAUSE' },
             { el: this.elements.hotkeyNext, key: 'NEXT_TRACK' },
             { el: this.elements.hotkeyPrev, key: 'PREV_TRACK' },
@@ -263,7 +263,7 @@ class UIController {
 
                 try {
                     const actionMap = {
-                        TOGGLE_MENU: () => window.hotkeyManager.toggleMenu(),
+                        TOGGLE_OVERLAY: () => window.hotkeyManager.toggleOverlay(),
                         PLAY_PAUSE: () => window.hotkeyManager.togglePlayPause(),
                         NEXT_TRACK: () => window.hotkeyManager.nextTrack(),
                         PREV_TRACK: () => window.hotkeyManager.previousTrack(),
@@ -744,7 +744,7 @@ class UIController {
         // Load hotkeys into form (stored under settings.hotkeys or fallback to CONFIG.DEFAULTS.hotkeys)
         const hotkeys = settings.hotkeys || CONFIG.DEFAULTS.hotkeys || CONFIG.HOTKEYS;
 
-        if (this.elements.hotkeyToggle) this.elements.hotkeyToggle.value = (hotkeys.TOGGLE_MENU || CONFIG.HOTKEYS.TOGGLE_MENU).replace(/\+/g, ' + ');
+        if (this.elements.hotkeyToggle) this.elements.hotkeyToggle.value = (hotkeys.TOGGLE_OVERLAY || CONFIG.HOTKEYS.TOGGLE_OVERLAY).replace(/\+/g, ' + ');
         if (this.elements.hotkeyPlayPause) this.elements.hotkeyPlayPause.value = (hotkeys.PLAY_PAUSE || CONFIG.HOTKEYS.PLAY_PAUSE).replace(/\+/g, ' + ');
         if (this.elements.hotkeyNext) this.elements.hotkeyNext.value = (hotkeys.NEXT_TRACK || CONFIG.HOTKEYS.NEXT_TRACK).replace(/\+/g, ' + ');
         if (this.elements.hotkeyPrev) this.elements.hotkeyPrev.value = (hotkeys.PREV_TRACK || CONFIG.HOTKEYS.PREV_TRACK).replace(/\+/g, ' + ');
@@ -879,7 +879,7 @@ class UIController {
             return el.dataset.combo || el.value.replace(/\s+\+\s+/g, '+') || fallback;
         };
 
-        settings.hotkeys.TOGGLE_MENU = pick(this.elements.hotkeyToggle, CONFIG.HOTKEYS.TOGGLE_MENU);
+        settings.hotkeys.TOGGLE_OVERLAY = pick(this.elements.hotkeyToggle, CONFIG.HOTKEYS.TOGGLE_OVERLAY);
         settings.hotkeys.PLAY_PAUSE = pick(this.elements.hotkeyPlayPause, CONFIG.HOTKEYS.PLAY_PAUSE);
         settings.hotkeys.NEXT_TRACK = pick(this.elements.hotkeyNext, CONFIG.HOTKEYS.NEXT_TRACK);
         settings.hotkeys.PREV_TRACK = pick(this.elements.hotkeyPrev, CONFIG.HOTKEYS.PREV_TRACK);
@@ -1043,7 +1043,7 @@ class UIController {
                 const failed = result.failed || [];
                 if (failed.length > 0) {
                     this.showToast(`Global hotkeys: ${reg.length} registered, ${failed.length} failed`, 'warning');
-                    console.warn('[UIController] global hotkeys registration failures:', failed);
+                    console.warn('[UIController] Global hotkey registration failures:', JSON.stringify(failed, null, 2));
                 } else {
                     this.showToast(`Global hotkeys registered (${reg.length})`, 'success');
                 }

@@ -49,7 +49,7 @@ const CONFIG = {
 
     // Hotkeys Configuration
     HOTKEYS: {
-        TOGGLE_MENU: 'ctrl+shift+m',
+        TOGGLE_OVERLAY: 'ctrl+shift+y',
         PLAY_PAUSE: 'ctrl+shift+space',
         NEXT_TRACK: 'ctrl+shift+d',
         PREV_TRACK: 'ctrl+shift+a',
@@ -83,7 +83,7 @@ const CONFIG = {
         globalHotkeys: false,
         // Default hotkeys (user-customizable, stored in settings)
         hotkeys: {
-            TOGGLE_MENU: 'ctrl+shift+m',
+            TOGGLE_OVERLAY: 'ctrl+shift+y',
             PLAY_PAUSE: 'ctrl+shift+space',
             NEXT_TRACK: 'ctrl+shift+d',
             PREV_TRACK: 'ctrl+shift+a',
