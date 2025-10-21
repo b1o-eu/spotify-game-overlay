@@ -62,7 +62,7 @@ class SpotifyGameMenu {
     async setupInitialState() {
         // Apply saved settings
         window.uiController.applyTheme();
-        window.uiController.applyOpacity();
+        window.uiController.applyOverlayOpacity();
         
         // Check if user is already authenticated
         if (window.spotifyAPI.isAuthenticated()) {

@@ -862,7 +862,7 @@ class UIController {
         }
         
         if (this.elements.opacitySlider) {
-            settings.opacity = parseInt(this.elements.opacitySlider.value);
+            settings.overlayOpacity = parseInt(this.elements.opacitySlider.value);
         }
 
         if (this.elements.clientIdInput) {
@@ -907,7 +907,7 @@ class UIController {
         
         // Other UI updates
         this.applyTheme();
-        this.applyOpacity();
+        this.applyOverlayOpacity();
 
         this.showToast('Settings saved', 'success');
         this.hideSettings();
@@ -919,7 +919,7 @@ class UIController {
         
         this.loadSettingsToForm();
         this.applyTheme();
-        this.applyOpacity();
+        this.applyOverlayOpacity();
         
         this.showToast('Settings reset to default', 'success');
     }
@@ -1059,31 +1059,6 @@ class UIController {
             this.elements.menu?.classList.add('light-theme');
         } else {
             this.elements.menu?.classList.remove('light-theme');
-        }
-    }
-
-    applyOpacity() {
-        const opacity = window.appState.settings.opacity / 100;
-        if (this.elements.menu) {
-            this.elements.menu.style.opacity = opacity;
-        }
-        // Also apply overlay opacity if overlay exists in this window
-        try {
-            // If running in the same renderer that created overlayManager
-            if (window.overlayManager && typeof window.overlayManager.setOverlayOpacity === 'function') {
-                window.overlayManager.setOverlayOpacity(opacity);
-            }
-        } catch (e) {
-            // ignore
-        }
-
-        // If running under Electron and overlay runs in a separate BrowserWindow, forward the setting
-        try {
-            if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.forwardOverlayUpdate === 'function') {
-                window.electronAPI.forwardOverlayUpdate({ type: 'COMMAND', data: { action: 'setOpacity', opacity: Math.round(opacity * 100) } });
-            }
-        } catch (e) {
-            // non-fatal
         }
     }
 
