@@ -5,7 +5,8 @@
     const DEFAULT_POSITIONS = {
         nowPlaying: { left: 20, top: 20 },
         upNext: { left: 20, top: 120 },
-        toasts: { right: 20, bottom: 20 }
+        toasts: { right: 20, bottom: 20 },
+        keybinds: { left: 20, bottom: 20 }
     };
     // How close to the end of the current song (ms) before showing the single "Up Next" item
     const UPNEXT_THRESHOLD_MS = 10000; // 10 seconds
@@ -20,6 +21,7 @@
             this.dragging = null; // {el, startX, startY, origLeft, origTop}
             this.queue = [];
             this.playbackState = null; // latest playback state (progress/duration/is_playing)
+            this.hotkeys = []; // list of hotkeys
 
             // Detect if this code runs inside a dedicated overlay BrowserWindow
             this.isOverlayWindow = !!(window.electronAPI && window.electronAPI.isElectron && window.electronAPI.isOverlayWindow);
@@ -120,15 +122,23 @@
             this.toastArea.dataset.widgetId = 'toasts';
             this.container.appendChild(this.toastArea);
 
+            // Keybinds display widget
+            this.keybindsWidget = document.createElement('div');
+            this.keybindsWidget.className = 'overlay-widget keybinds-widget';
+            this.keybindsWidget.dataset.widgetId = 'keybinds';
+            this.keybindsWidget.innerHTML = `
+                <div class="keybinds-title">Keybinds</div>
+                <ul class="keybinds-list"><li>No keybinds configured</li></ul>`;
+            this.container.appendChild(this.keybindsWidget);
             // Make widgets absolute positioned
-            [this.nowPlaying, this.upNext, this.toastArea].forEach(el => {
+            [this.nowPlaying, this.upNext, this.toastArea, this.keybindsWidget].forEach(el => {
                 el.style.position = 'absolute';
                 // When not editing, widgets shouldn't capture pointer events
                 el.style.pointerEvents = 'none';
             });
 
             // Create visibility toggles inside each widget, only visible in edit mode
-            [this.nowPlaying, this.upNext, this.toastArea].forEach(widget => {
+            [this.nowPlaying, this.upNext, this.toastArea, this.keybindsWidget].forEach(widget => {
                 const id = widget.dataset.widgetId;
                 const toggle = document.createElement('div');
                 toggle.className = 'overlay-widget-toggle';
@@ -177,10 +187,12 @@
             const p = this.positions || {};
             const now = p.nowPlaying || DEFAULT_POSITIONS.nowPlaying;
             const next = p.upNext || DEFAULT_POSITIONS.upNext;
+            const keybinds = p.keybinds || DEFAULT_POSITIONS.keybinds;
             const toasts = p.toasts || DEFAULT_POSITIONS.toasts;
 
             this.setElPos(this.nowPlaying, now.left, now.top);
             this.setElPos(this.upNext, next.left, next.top);
+            this.setElPos(this.keybindsWidget, keybinds.left, keybinds.top);
 
             // Toasts anchored to bottom-right by default
             if (toasts.left !== undefined && toasts.top !== undefined) {
@@ -220,7 +232,7 @@
             if (this.editMode) {
                 this.container.classList.add('overlay-edit-mode');
                 this.container.style.pointerEvents = 'auto';
-                [this.nowPlaying, this.upNext, this.toastArea].forEach(el => el.style.pointerEvents = 'auto');
+                [this.nowPlaying, this.upNext, this.toastArea, this.keybindsWidget].forEach(el => el.style.pointerEvents = 'auto');
                 // If running as a native overlay window, ask main process to make the window focusable/clickable
 
                 // Show the "Finish Editing" button
@@ -248,7 +260,7 @@
             } else {
                 this.container.classList.remove('overlay-edit-mode');
                 this.container.style.pointerEvents = 'none';
-                [this.nowPlaying, this.upNext, this.toastArea].forEach(el => el.style.pointerEvents = 'none');
+                [this.nowPlaying, this.upNext, this.toastArea, this.keybindsWidget].forEach(el => el.style.pointerEvents = 'none');
 
                 // Hide the "Finish Editing" button
                 if (this.toastArea) {
@@ -391,6 +403,8 @@
                 // store playback state and update visibility of up-next widget
                 this.playbackState = data;
                 this.updatePlaybackState(data);
+            } else if (type === 'hotkeys') {
+                this.updateHotkeys(data);
             }
             // Support commands forwarded from main/renderer
             if (type === 'COMMAND' && data && data.action) {
@@ -559,6 +573,32 @@
             this.renderUpNext();
         }
 
+        updateHotkeys(hotkeys) {
+            this.hotkeys = hotkeys || [];
+            this.renderKeybinds();
+        }
+
+        renderKeybinds() {
+            if (!this.keybindsWidget) return;
+            const listEl = this.keybindsWidget.querySelector('.keybinds-list');
+            if (!listEl) return;
+
+            listEl.innerHTML = ''; // Clear existing
+
+            if (!this.hotkeys || this.hotkeys.length === 0) {
+                listEl.innerHTML = '<li>No keybinds configured</li>';
+                return;
+            }
+
+            this.hotkeys.forEach(hotkey => {
+                const li = document.createElement('li');
+                li.className = 'keybind-item';
+                const formattedCombo = hotkey.combination.replace(/\+/g, ' + ').replace(/\b\w/g, c => c.toUpperCase());
+                li.innerHTML = `<span class="keybind-combo">${formattedCombo}</span> <span class="keybind-action">${hotkey.description}</span>`;
+                listEl.appendChild(li);
+            });
+        }
+
         updateProgressUI() {
             if (!this.nowPlaying || !this.nowPlaying.querySelector) return;
             const current = this.nowPlaying.querySelector('.overlay-time.current');
@@ -630,11 +670,11 @@
         loadWidgetVisibility() {
             try {
                 const raw = localStorage.getItem(WIDGET_VISIBILITY_KEY);
-                const defaults = { nowPlaying: true, upNext: true, toasts: true };
+                const defaults = { nowPlaying: true, upNext: true, toasts: true, keybinds: true };
                 return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
             } catch (e) {
                 console.warn('[OverlayManager] failed to load widget visibility', e);
-                return { nowPlaying: true, upNext: true, toasts: true };
+                return { nowPlaying: true, upNext: true, toasts: true, keybinds: true };
             }
         }
 

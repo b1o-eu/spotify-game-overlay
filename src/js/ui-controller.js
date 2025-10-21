@@ -311,6 +311,12 @@ class UIController {
         // Forward to overlay window (main process will forward to overlay BrowserWindow)
         try {
             if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.forwardOverlayUpdate === 'function') {
+                // Also forward hotkeys if they changed
+                if (type === 'settings' && data.hotkeys) {
+                    const hotkeysForOverlay = window.hotkeyManager.getRegisteredHotkeys();
+                    window.electronAPI.forwardOverlayUpdate({ type: 'hotkeys', data: hotkeysForOverlay });
+                }
+
                 window.electronAPI.forwardOverlayUpdate({ type, data });
             }
         } catch (e) {
@@ -914,6 +920,13 @@ class UIController {
         this.applyTheme();
         this.applyOverlayOpacity();
 
+        // Forward new hotkey config to overlay
+        try {
+            const hotkeysForOverlay = window.hotkeyManager.getRegisteredHotkeys();
+            window.electronAPI.forwardOverlayUpdate({ type: 'hotkeys', data: hotkeysForOverlay });
+        } catch (e) {
+            console.warn('Failed to forward hotkey update to overlay', e);
+        }
         this.showToast('Settings saved', 'success');
         this.hideSettings();
     }
@@ -1051,6 +1064,14 @@ class UIController {
                     console.warn('[UIController] Global hotkey registration failures:', JSON.stringify(failed, null, 2));
                 } else {
                     this.showToast(`Global hotkeys registered (${reg.length})`, 'success');
+                }
+            }
+
+            // After registering, ensure the overlay has the latest hotkey info
+            if (window.hotkeyManager) {
+                const hotkeysForOverlay = window.hotkeyManager.getRegisteredHotkeys();
+                if (window.electronAPI && typeof window.electronAPI.forwardOverlayUpdate === 'function') {
+                    window.electronAPI.forwardOverlayUpdate({ type: 'hotkeys', data: hotkeysForOverlay });
                 }
             }
         } catch (err) {
