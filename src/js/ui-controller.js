@@ -30,6 +30,11 @@ class UIController {
         } catch (err) {
             console.error('[UIController] applyTheme failed:', err);
         }
+        try {
+            this.applyOverlayOpacity();
+        } catch (err) {
+            // ignore
+        }
         
         // Listen to app state changes
         window.addEventListener('appStateChange', this.handleStateChange.bind(this));
@@ -697,8 +702,9 @@ class UIController {
         }
         
         if (this.elements.opacitySlider) {
-            this.elements.opacitySlider.value = settings.opacity;
-            this.elements.opacityValue.textContent = `${settings.opacity}%`;
+            // Slider now controls overlay opacity (not menu opacity)
+            this.elements.opacitySlider.value = settings.overlayOpacity ?? settings.opacity ?? 95;
+            this.elements.opacityValue.textContent = `${this.elements.opacitySlider.value}%`;
         }
         
         if (this.elements.clientIdInput) {
@@ -905,9 +911,30 @@ class UIController {
 
     changeOpacity(event) {
         const opacity = parseInt(event.target.value);
-        window.appState.settings.opacity = opacity;
+        // This slider now controls overlay opacity specifically
+        window.appState.settings.overlayOpacity = opacity;
         this.elements.opacityValue.textContent = `${opacity}%`;
-        this.applyOpacity();
+        // Persist the settings
+        window.appState.saveSettings();
+        // Apply overlay opacity locally and forward to overlay window if present
+        this.applyOverlayOpacity();
+    }
+
+    applyOverlayOpacity() {
+        const overlayOpacity = (window.appState.settings.overlayOpacity ?? 90) / 100;
+        // Apply to overlay if it's present in this renderer
+        try {
+            if (window.overlayManager && typeof window.overlayManager.setOverlayOpacity === 'function') {
+                window.overlayManager.setOverlayOpacity(overlayOpacity);
+            }
+        } catch (e) {}
+
+        // Forward to overlay BrowserWindow if running under Electron
+        try {
+            if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.forwardOverlayUpdate === 'function') {
+                window.electronAPI.forwardOverlayUpdate({ type: 'COMMAND', data: { action: 'setOpacity', opacity: Math.round(overlayOpacity * 100) } });
+            }
+        } catch (e) {}
     }
 
     // Handle enabling/disabling of global hotkeys via the checkbox
@@ -1019,6 +1046,24 @@ class UIController {
         const opacity = window.appState.settings.opacity / 100;
         if (this.elements.menu) {
             this.elements.menu.style.opacity = opacity;
+        }
+        // Also apply overlay opacity if overlay exists in this window
+        try {
+            // If running in the same renderer that created overlayManager
+            if (window.overlayManager && typeof window.overlayManager.setOverlayOpacity === 'function') {
+                window.overlayManager.setOverlayOpacity(opacity);
+            }
+        } catch (e) {
+            // ignore
+        }
+
+        // If running under Electron and overlay runs in a separate BrowserWindow, forward the setting
+        try {
+            if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.forwardOverlayUpdate === 'function') {
+                window.electronAPI.forwardOverlayUpdate({ type: 'COMMAND', data: { action: 'setOpacity', opacity: Math.round(opacity * 100) } });
+            }
+        } catch (e) {
+            // non-fatal
         }
     }
 

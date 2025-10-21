@@ -1,5 +1,6 @@
 /* Modal Styles */
 .modal {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
     position: fixed;
     top: 0;
     left: 0;
@@ -210,6 +211,7 @@
         transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -263,12 +265,10 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.1),
-        transparent
-    );
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.1),
+            transparent);
     animation: loading 1.5s infinite;
 }
 
@@ -276,6 +276,7 @@
     0% {
         left: -100%;
     }
+
     100% {
         left: 100%;
     }
@@ -307,38 +308,89 @@
 .global-overlay {
     position: fixed;
     inset: 0;
-    pointer-events: none; /* default: don't block input */
+    pointer-events: none;
+    /* default: don't block input */
     z-index: 10002;
 }
 
 /* Ensure overlay defaults to white text for readability */
-.global-overlay, .global-overlay * {
+.global-overlay,
+.global-overlay * {
     color: #ffffff;
+    /* Match main UI font so overlay text looks consistent */
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .overlay-widget {
+    /* Normalized overlay widget width (can be tuned) */
+    --overlay-width: 260px;
+    width: var(--overlay-width);
     min-width: 200px;
     max-width: 420px;
-    background: rgba(20,20,20,0.6);
+    /* allow global overlay opacity to influence widget backgrounds */
+    --overlay-opacity: var(--overlay-opacity, 0.9);
+    background: rgba(20, 20, 20, calc(0.6 * var(--overlay-opacity)));
     color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.06);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     padding: 8px 10px;
     border-radius: 8px;
     backdrop-filter: blur(6px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
     transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* Now-playing title: allow truncation and scrolling (marquee) when content overflows */
+.now-playing-widget {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.now-playing-widget .overlay-meta {
+    flex: 1 1 auto;
+    min-width: 0; /* allow children to shrink properly in flexbox */
+}
+
+.overlay-meta .title-container {
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+}
+
+.overlay-meta .marquee {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+}
+
+.overlay-meta .marquee .marquee-content {
+    display: inline-block;
+    white-space: nowrap;
+    padding-right: 36px; /* gap before repeating */
+    will-change: transform;
+}
+
+.overlay-meta .marquee.scrolling .marquee-content {
+    /* Run the scroll once; JS will restart the animation after a pause so we can insert a delay between cycles */
+    animation: scroll-left var(--scroll-duration, 12s) linear 1;
+    animation-fill-mode: none;
+}
+
+@keyframes scroll-left {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(calc(-1 * var(--scroll-distance, 0px))); }
 }
 
 /* Stronger opaque variant for overlay window readability */
 .global-overlay.overlay-opaque .overlay-widget {
-    background: rgba(14,14,14,0.86);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(14, 14, 14, 0.86);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(8px);
 }
 
 .overlay-widget.dragging {
     transform: scale(1.02);
-    box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
 }
 
 .overlay-widget .overlay-album img {
@@ -360,7 +412,37 @@
 
 .overlay-meta .overlay-artist {
     font-size: 12px;
-    color: rgba(255,255,255,0.85);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Now playing progress bar */
+.overlay-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.overlay-time {
+    font-size: 11px;
+    color: rgba(255,255,255,0.9);
+    min-width: 36px;
+    text-align: center;
+}
+
+.overlay-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.overlay-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #1db954 0%, #1ed760 100%);
+    transition: width 0.2s linear;
 }
 
 .up-next-widget .overlay-upnext-header {
@@ -384,27 +466,41 @@
 }
 
 .overlay-toast {
-    background: rgba(16,16,16,0.75);
+    background: rgba(16, 16, 16, 0.75);
     color: #ffffff;
     padding: 8px 12px;
     border-radius: 8px;
     min-width: 220px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
 }
 
 /* Opaque toasts variant for overlay windows (higher contrast) */
 .global-overlay.overlay-opaque .overlay-toast {
-    background: rgba(10,10,10,0.95);
+    background: rgba(10, 10, 10, 0.95);
     color: #ffffff;
 }
 
-.overlay-toast.success { border-left: 4px solid var(--success-color); }
-.overlay-toast.error { border-left: 4px solid var(--error-color); }
-.overlay-toast.warning { border-left: 4px solid var(--warning-color); }
+.overlay-toast.success {
+    border-left: 4px solid var(--success-color);
+}
+
+.overlay-toast.error {
+    border-left: 4px solid var(--error-color);
+}
+
+.overlay-toast.warning {
+    border-left: 4px solid var(--warning-color);
+}
 
 /* Edit mode visuals */
-.global-overlay.overlay-edit-mode { pointer-events: auto; }
-.global-overlay.overlay-edit-mode .overlay-widget { outline: 1px dashed rgba(255,255,255,0.12); }
+.global-overlay.overlay-edit-mode {
+    pointer-events: auto;
+}
+
+.global-overlay.overlay-edit-mode .overlay-widget {
+    outline: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
 .overlay-widget::after {
     content: '';
     position: absolute;
@@ -412,5 +508,10 @@
 }
 
 /* Prevent overlay from blocking mouse when not editing */
-.global-overlay:not(.overlay-edit-mode) { pointer-events: none; }
-.global-overlay:not(.overlay-edit-mode) .overlay-widget { pointer-events: none; }
+.global-overlay:not(.overlay-edit-mode) {
+    pointer-events: none;
+}
+
+.global-overlay:not(.overlay-edit-mode) .overlay-widget {
+    pointer-events: none;
+}

@@ -6,12 +6,18 @@
         upNext: { left: 20, top: 120 },
         toasts: { right: 20, bottom: 20 }
     };
+    // How close to the end of the current song (ms) before showing the single "Up Next" item
+    const UPNEXT_THRESHOLD_MS = 10000; // 10 seconds
+    // Pause between marquee scroll cycles (milliseconds)
+    const MARQUEE_PAUSE_MS = 4000; // 4 seconds (configurable)
 
     class OverlayManager {
         constructor() {
             this.positions = this.loadPositions();
             this.editMode = false;
             this.dragging = null; // {el, startX, startY, origLeft, origTop}
+            this.queue = [];
+            this.playbackState = null; // latest playback state (progress/duration/is_playing)
 
             // Detect if this code runs inside a dedicated overlay BrowserWindow
             this.isOverlayWindow = !!(window.electronAPI && window.electronAPI.isElectron && window.electronAPI.isOverlayWindow);
@@ -83,8 +89,17 @@
             this.nowPlaying.innerHTML = `
                 <div class="overlay-album"><img src="assets/icon.png" alt="album"></div>
                 <div class="overlay-meta">
-                    <div class="overlay-track">Not Playing</div>
+                    <div class="title-container">
+                        <div class="marquee">
+                            <span class="marquee-content overlay-track">Not Playing</span>
+                        </div>
+                    </div>
                     <div class="overlay-artist">Connect to Spotify</div>
+                    <div class="overlay-progress">
+                        <div class="overlay-time current">0:00</div>
+                        <div class="overlay-progress-bar"><div class="overlay-progress-fill"></div></div>
+                        <div class="overlay-time total">0:00</div>
+                    </div>
                 </div>
             `;
             this.container.appendChild(this.nowPlaying);
@@ -121,6 +136,10 @@
             this.container.addEventListener('pointerdown', this.onPointerDown.bind(this));
             document.addEventListener('pointermove', this.onPointerMove.bind(this));
             document.addEventListener('pointerup', this.onPointerUp.bind(this));
+            // Recalculate marquee on window resize so scrolling starts/stops appropriately
+            window.addEventListener('resize', () => {
+                try { this._updateMarqueeState(); } catch (_) {}
+            });
         }
 
         applyPositions() {
@@ -192,6 +211,8 @@
                     console.warn('[OverlayManager] failed to request native mouse behavior change', e);
                 }
             }
+            // Re-render up-next area on edit mode change so users see full queue while editing
+            try { this.renderUpNext(); } catch (e) { /* ignore */ }
         }
 
         onPointerDown(e) {
@@ -265,7 +286,9 @@
             } else if (type === 'queue') {
                 this.updateQueue(data);
             } else if (type === 'playbackState') {
-                // optionally show play/pause indicators
+                // store playback state and update visibility of up-next widget
+                this.playbackState = data;
+                this.updatePlaybackState(data);
             }
             // Support commands forwarded from main/renderer
             if (type === 'COMMAND' && data && data.action) {
@@ -275,48 +298,259 @@
                     this.toggleEditMode(true);
                 } else if (data.action === 'exitEditMode') {
                     this.toggleEditMode(false);
+                } else if (data.action === 'setOpacity') {
+                    // Expect data.opacity as integer percentage (0-100)
+                    const pct = Number.isFinite(data.opacity) ? parseInt(data.opacity, 10) : null;
+                    if (pct !== null && !Number.isNaN(pct)) {
+                        try { this.setOverlayOpacity(pct / 100); } catch (e) {}
+                    }
                 }
             }
         }
 
         updateNowPlaying(track) {
             try {
+                // Ensure overlay elements exist (this manager may run in non-overlay windows)
+                if (!this.nowPlaying || !this.nowPlaying.querySelector) return;
                 const img = this.nowPlaying.querySelector('img');
                 const title = this.nowPlaying.querySelector('.overlay-track');
                 const artist = this.nowPlaying.querySelector('.overlay-artist');
 
                 if (!track) {
-                    title.textContent = 'Not Playing';
-                    artist.textContent = 'Connect to Spotify';
-                    img.src = 'assets/default-album.png';
+                    if (title) title.textContent = 'Not Playing';
+                    if (artist) artist.textContent = 'Connect to Spotify';
+                    if (img) img.src = 'assets/default-album.png';
                     return;
                 }
 
-                title.textContent = track.name || 'Unknown Track';
-                artist.textContent = track.artists ? track.artists.map(a => a.name).join(', ') : '';
-                img.src = track.album?.images?.[0]?.url || img.src;
+                if (title) {
+                    const normalized = this.normalizeTitle(track.name) || 'Unknown Track';
+                    // If title is inside marquee-content span, update that instead
+                    const marqueeContent = this.nowPlaying.querySelector('.marquee-content');
+                    if (marqueeContent) {
+                        marqueeContent.textContent = normalized;
+                        // ensure any scrolling state updates
+                        this._updateMarqueeState();
+                    } else {
+                        title.textContent = normalized;
+                    }
+                }
+                if (artist) artist.textContent = track.artists ? track.artists.map(a => a.name).join(', ') : '';
+                if (img) img.src = track.album?.images?.[0]?.url || img.src;
             } catch (e) {
                 console.error('[OverlayManager] updateNowPlaying', e);
             }
+            // re-evaluate up-next visibility when track metadata changes
+            try {
+                // If track contains duration_ms, initialize duration for progress UI
+                if (track && track.duration_ms) this._duration = track.duration_ms;
+                this.updateProgressUI();
+            } catch (_) {}
+            try { this.renderUpNext(); } catch (_) {}
+        }
+
+        // Update marquee scrolling based on overflow width.
+        _updateMarqueeState() {
+            if (!this.nowPlaying) return;
+            const marquee = this.nowPlaying.querySelector('.marquee');
+            const content = this.nowPlaying.querySelector('.marquee-content');
+            if (!marquee || !content) return;
+
+            // Reset any previous animation settings
+            // Clear any previously scheduled start
+            try { if (marquee.__marqueeStartTimeout) { clearTimeout(marquee.__marqueeStartTimeout); marquee.__marqueeStartTimeout = null; } } catch (_) {}
+
+            // Reset any previous animation settings immediately to stop any in-progress animation
+            marquee.classList.remove('scrolling');
+            marquee.style.setProperty('--scroll-distance', '0px');
+            marquee.style.removeProperty('--scroll-duration');
+
+            // Small timeout to ensure DOM layout updated
+            requestAnimationFrame(() => {
+                const containerWidth = marquee.clientWidth;
+                const contentWidth = content.scrollWidth;
+                if (contentWidth > containerWidth + 8) {
+                    const distance = contentWidth + 36; // include padding-right used in CSS
+                    // Speed: 40 px/sec (tunable). Duration in seconds
+                    const duration = Math.max(3, distance / 40);
+                    marquee.style.setProperty('--scroll-distance', `${distance}px`);
+                    marquee.style.setProperty('--scroll-duration', `${duration}s`);
+
+                    // Clear any previous animationend handler and timeouts
+                    try {
+                        if (marquee.__marqueeAnimationEndHandler) {
+                            marquee.removeEventListener('animationend', marquee.__marqueeAnimationEndHandler);
+                            marquee.__marqueeAnimationEndHandler = null;
+                        }
+                        if (marquee.__marqueeStartTimeout) { clearTimeout(marquee.__marqueeStartTimeout); marquee.__marqueeStartTimeout = null; }
+                        if (marquee.__marqueeCycleTimeout) { clearTimeout(marquee.__marqueeCycleTimeout); marquee.__marqueeCycleTimeout = null; }
+                    } catch (_) {}
+
+                    // Add the scrolling class after the initial pause
+                    marquee.__marqueeStartTimeout = setTimeout(() => {
+                        try { marquee.classList.add('scrolling'); } catch (e) {}
+                        marquee.__marqueeStartTimeout = null;
+
+                        // When the animation finishes, remove the class and schedule the next cycle after pause
+                        const onAnimationEnd = () => {
+                            try { marquee.classList.remove('scrolling'); } catch (e) {}
+                            // Schedule restart after MARQUEE_PAUSE_MS
+                            marquee.__marqueeCycleTimeout = setTimeout(() => {
+                                try { marquee.classList.add('scrolling'); } catch (e) {}
+                                marquee.__marqueeCycleTimeout = null;
+                            }, MARQUEE_PAUSE_MS);
+                        };
+
+                        // Store handler so we can remove it on content changes
+                        marquee.__marqueeAnimationEndHandler = onAnimationEnd;
+                        marquee.addEventListener('animationend', onAnimationEnd, { once: true });
+                    }, MARQUEE_PAUSE_MS);
+                } else {
+                    // No overflow: ensure no scrolling and clear any start timers
+                    try { if (marquee.__marqueeStartTimeout) { clearTimeout(marquee.__marqueeStartTimeout); marquee.__marqueeStartTimeout = null; } } catch (_) {}
+                    try { if (marquee.__marqueeCycleTimeout) { clearTimeout(marquee.__marqueeCycleTimeout); marquee.__marqueeCycleTimeout = null; } } catch (_) {}
+                    marquee.classList.remove('scrolling');
+                }
+            });
         }
 
         updateQueue(queue) {
             try {
-                const list = this.upNext.querySelector('.overlay-upnext-list');
-                list.innerHTML = '';
-                if (!queue || queue.length === 0) {
-                    list.innerHTML = '<span class="empty">No songs in queue</span>';
-                    return;
-                }
-                queue.slice(0, 5).forEach(item => {
-                    const el = document.createElement('div');
-                    el.className = 'overlay-upnext-item';
-                    el.textContent = `${item.name} — ${item.artists?.map(a => a.name).join(', ')}`;
-                    list.appendChild(el);
-                });
+                // If the overlay isn't created in this context, just store queue for later
+                this.queue = queue || [];
+                if (!this.upNext) return;
+                this.renderUpNext();
             } catch (e) {
                 console.error('[OverlayManager] updateQueue', e);
             }
+        }
+
+        updatePlaybackState(state) {
+            // called when playbackState message arrives; ensure we have position/duration
+            try {
+                // Normalize position/duration (ms)
+                this._position = state?.progress_ms || 0;
+                this._duration = state?.item?.duration_ms || 0;
+            } catch (e) {
+                console.warn('[OverlayManager] updatePlaybackState parse error', e);
+                this._position = 0;
+                this._duration = 0;
+            }
+            // Update now-playing progress UI if present
+            try { this.updateProgressUI(); } catch (e) { /* ignore */ }
+            this.renderUpNext();
+        }
+
+        updateProgressUI() {
+            if (!this.nowPlaying || !this.nowPlaying.querySelector) return;
+            const current = this.nowPlaying.querySelector('.overlay-time.current');
+            const total = this.nowPlaying.querySelector('.overlay-time.total');
+            const fill = this.nowPlaying.querySelector('.overlay-progress-fill');
+            if (!fill || !current || !total) return;
+
+            const pos = Math.max(0, this._position || 0);
+            const dur = Math.max(0, this._duration || 0);
+            const fmt = (ms) => {
+                if (!ms || ms <= 0) return '0:00';
+                const s = Math.floor(ms / 1000);
+                const m = Math.floor(s / 60);
+                const sec = s % 60;
+                return `${m}:${String(sec).padStart(2, '0')}`;
+            };
+
+            current.textContent = fmt(pos);
+            total.textContent = fmt(dur);
+            const pct = dur > 0 ? Math.min(100, Math.max(0, (pos / dur) * 100)) : 0;
+            fill.style.width = pct + '%';
+        }
+
+        // Set overlay opacity (0.0 - 1.0). Applies to the main container so the whole overlay becomes translucent.
+        setOverlayOpacity(opacity) {
+            if (!this.container) return;
+            try {
+                const o = Math.max(0, Math.min(1, Number(opacity) || 0));
+                // Apply as CSS variable and direct style for broad compatibility
+                this.container.style.setProperty('--overlay-opacity', String(o));
+                this.container.style.opacity = String(o);
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        renderUpNext() {
+            // Determine whether to show the up-next widget and what to render.
+            if (!this.upNext || !this.upNext.querySelector) return;
+            const list = this.upNext.querySelector('.overlay-upnext-list');
+            if (!list) return;
+
+            // If in edit mode, always show the full queue (helpful when positioning widgets)
+                if (this.editMode) {
+                this.upNext.style.display = 'block';
+                list.innerHTML = '';
+                if (!this.queue || this.queue.length === 0) {
+                    list.innerHTML = '<span class="empty">No songs in queue</span>';
+                    return;
+                }
+                this.queue.slice(0, 5).forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'overlay-upnext-item';
+                    el.textContent = `${this.normalizeTitle(item.name)} — ${item.artists?.map(a => a.name).join(', ')}`;
+                    list.appendChild(el);
+                });
+                return;
+            }
+
+            // Not in edit mode: show only when there's an immediate next song and current track is near its end
+            if (!this.queue || this.queue.length === 0) {
+                this.upNext.style.display = 'none';
+                return;
+            }
+
+            // Need playback timing info to decide
+            const position = (this._position !== undefined) ? this._position : (this.playbackState?.progress_ms || 0);
+            const duration = (this._duration !== undefined) ? this._duration : (this.playbackState?.item?.duration_ms || 0);
+            if (!duration || duration <= 0) {
+                // unknown duration: hide
+                this.upNext.style.display = 'none';
+                return;
+            }
+
+            const remaining = Math.max(0, duration - position);
+            if (remaining <= UPNEXT_THRESHOLD_MS && this.queue.length > 0 && this.playbackState?.is_playing) {
+                // Show only the first queued item
+                this.upNext.style.display = 'block';
+                list.innerHTML = '';
+                const next = this.queue[0];
+                if (!next) {
+                    list.innerHTML = '<span class="empty">No songs in queue</span>';
+                    return;
+                }
+                const el = document.createElement('div');
+                el.className = 'overlay-upnext-item';
+                el.textContent = `${this.normalizeTitle(next.name)} — ${next.artists?.map(a => a.name).join(', ')}`;
+                list.appendChild(el);
+            } else {
+                // Hide when not near the end
+                this.upNext.style.display = 'none';
+            }
+        }
+
+        // Normalize a track title by removing any parenthetical parts like "(feat. Artist)" or "(Live)"
+        // and trimming extra whitespace. Preserves other punctuation.
+        normalizeTitle(name) {
+            if (!name || typeof name !== 'string') return name;
+            // Remove any occurrences of parentheses and their contents, including nested ones.
+            // We'll repeatedly strip the innermost parentheses until none remain.
+            let out = name;
+            const parenRe = /\([^()]*\)/g;
+            while (parenRe.test(out)) {
+                out = out.replace(parenRe, '');
+            }
+            // Replace multiple spaces with single space and trim
+            out = out.replace(/\s{2,}/g, ' ').trim();
+            // If title ends with stray hyphen or em-dash from removed part like "Song - " or "Song — ", trim that too
+            out = out.replace(/[\-–—:\s]+$/g, '').trim();
+            return out;
         }
 
         observeToasts() {
@@ -339,8 +573,8 @@
 
         cloneToast(node) {
             try {
-                const type = node.classList.contains('success') ? 'success' : node.classList.contains('error') ? 'error' : node.classList.contains('warning') ? 'warning' : 'info';
-                const msg = node.querySelector('.toast-message')?.textContent || node.textContent || '';
+                const type = (node && node.classList && node.classList.contains && (node.classList.contains('success') ? 'success' : node.classList.contains('error') ? 'error' : node.classList.contains('warning') ? 'warning' : 'info')) || 'info';
+                const msg = (node && typeof node.querySelector === 'function' && node.querySelector('.toast-message')?.textContent) || (node && node.textContent) || '';
                 const toast = document.createElement('div');
                 toast.className = `overlay-toast ${type}`;
                 toast.innerHTML = `<span class="overlay-toast-message">${msg}</span>`;

@@ -66,13 +66,15 @@ const CONFIG = {
         SETTINGS: 'menu_settings',
         THEME: 'menu_theme',
         POSITION: 'menu_position',
-        OPACITY: 'menu_opacity'
+        OPACITY: 'menu_opacity',
+        OVERLAY_OPACITY: 'overlay_opacity'
     },
 
     // Default Settings
     DEFAULTS: {
         theme: 'dark',
         opacity: 100,
+    overlayOpacity: 90,
         position: { x: 20, y: 20 },
         autoHide: false,
         showNotifications: true,
@@ -125,6 +127,8 @@ class AppState {
             
             const opacity = localStorage.getItem(CONFIG.STORAGE.OPACITY);
             if (opacity) this.settings.opacity = parseInt(opacity);
+            const overlayOpacity = localStorage.getItem(CONFIG.STORAGE.OVERLAY_OPACITY);
+            if (overlayOpacity) this.settings.overlayOpacity = parseInt(overlayOpacity);
             
             const position = localStorage.getItem(CONFIG.STORAGE.POSITION);
             if (position) this.settings.position = JSON.parse(position);
@@ -141,6 +145,7 @@ class AppState {
             localStorage.setItem(CONFIG.STORAGE.SETTINGS, JSON.stringify(this.settings));
             localStorage.setItem(CONFIG.STORAGE.THEME, this.settings.theme);
             localStorage.setItem(CONFIG.STORAGE.OPACITY, this.settings.opacity.toString());
+            localStorage.setItem(CONFIG.STORAGE.OVERLAY_OPACITY, this.settings.overlayOpacity.toString());
             localStorage.setItem(CONFIG.STORAGE.POSITION, JSON.stringify(this.settings.position));
         } catch (error) {
             console.error('Failed to save settings:', error);
@@ -162,11 +167,39 @@ class AppState {
         this.shuffleState = state?.shuffle_state || false;
         this.repeatState = state?.repeat_state || 'off';
         this.device = state?.device || null;
-        
-        if (state?.item) {
-            this.updateCurrentTrack(state.item);
+        // Only update currentTrack when the actual track changes (avoid repainting UI every second)
+        try {
+            const incoming = state?.item;
+            const existing = this.currentTrack;
+            let trackChanged = false;
+
+            if (incoming && incoming.id) {
+                // Prefer unique id when available
+                trackChanged = !existing || existing.id !== incoming.id;
+            } else if (incoming && incoming.uri) {
+                // Fallback to URI
+                trackChanged = !existing || existing.uri !== incoming.uri;
+            } else {
+                // If no identifying fields, fall back to title/artist comparison as a last resort
+                if (incoming && existing) {
+                    const inTitle = (incoming.name || '').trim();
+                    const exTitle = (existing.name || '').trim();
+                    const inArtists = (incoming.artists || []).map(a => a.name).join(',');
+                    const exArtists = (existing.artists || []).map(a => a.name).join(',');
+                    trackChanged = inTitle !== exTitle || inArtists !== exArtists;
+                } else if (incoming && !existing) {
+                    trackChanged = true;
+                }
+            }
+
+            if (trackChanged) {
+                this.updateCurrentTrack(incoming);
+            }
+        } catch (e) {
+            // If something goes wrong comparing, still attempt to update
+            try { this.updateCurrentTrack(state?.item); } catch (_) {}
         }
-        
+
         this.notifyStateChange('playbackState', state);
     }
 

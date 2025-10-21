@@ -23,7 +23,7 @@
     "desktop-app",
     "electron"
   ],
-  "author": "Julia Knoth",
+  "author": "b1o.eu | Julia Knoth",
   "license": "MIT",
   "build": {
     "appId": "eu.b1o.spotify-game-overlay",
