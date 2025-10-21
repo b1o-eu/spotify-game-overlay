@@ -281,7 +281,7 @@ class SpotifyAPI {
                 ...options.headers
             }
         });
-        
+
         if (response.status === 401) {
             // Token expired, try to refresh
             if (this.refreshToken) {
@@ -292,13 +292,39 @@ class SpotifyAPI {
                 throw new Error('Authentication expired');
             }
         }
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error?.message || `API request failed: ${response.status}`);
+
+        // 204 No Content should be treated as a successful call with no body
+        if (response.status === 204) {
+            return null;
         }
-        
-        return response.json();
+
+        // Non-OK responses: try to parse the error body but be resilient to empty/non-JSON bodies
+        if (!response.ok) {
+            let errorData = {};
+            try {
+                const text = await response.text();
+                errorData = text ? JSON.parse(text) : {};
+            } catch (_) {
+                // ignore parse errors
+            }
+            throw new Error(errorData?.error?.message || `API request failed: ${response.status}`);
+        }
+
+        // For successful responses, handle empty or non-JSON bodies gracefully
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            const text = await response.text();
+            return text ? text : null;
+        }
+
+        const text = await response.text();
+        if (!text) return null;
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            // If parsing fails, return raw text
+            return text;
+        }
     }
 
     // Get current playback state

@@ -25,10 +25,10 @@ function createWindow() {
     // Create the main application window as a frameless overlay-like window
     // so the overlay DOM becomes the visible window and can be dragged via CSS.
     mainWindow = new BrowserWindow({
-        width: 400,
-        height: 600,
-        minWidth: 360,
-        minHeight: 300,
+    width: 400,
+    height: 625,
+    minWidth: 360,
+    minHeight: 400,
         frame: false, // Frameless so we can style and drag via CSS
         transparent: true,
         alwaysOnTop: false,
@@ -43,6 +43,16 @@ function createWindow() {
         icon: path.join(__dirname, 'assets', 'icon.png'),
         show: false // Don't show until ready
     });
+
+    // Try to disable the OS-level window shadow where supported (Windows/macOS).
+    // setHasShadow is available on BrowserWindow instances on supported platforms.
+    try {
+        if (typeof mainWindow.setHasShadow === 'function') {
+            mainWindow.setHasShadow(false);
+        }
+    } catch (e) {
+        console.warn('[Main] Failed to disable window shadow:', e);
+    }
 
     // Load the app
     mainWindow.loadFile('index.html');
@@ -249,5 +259,37 @@ ipcMain.handle('window-toggle-always-on-top', () => {
 
 ipcMain.handle('get-app-version', () => {
     return app.getVersion();
+});
+
+// Resize the main window to the given width and height (validated)
+ipcMain.handle('window-resize', (event, width, height) => {
+    try {
+        if (!mainWindow || mainWindow.isDestroyed()) {
+            throw new Error('Main window not available');
+        }
+
+        // Validate inputs
+        const w = Number(width);
+        const h = Number(height);
+
+        if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+            throw new Error('Invalid width/height');
+        }
+
+        // Apply minimum size constraints similar to creation
+        const minW = mainWindow.getMinimumSize ? mainWindow.getMinimumSize()[0] : 100;
+        const minH = mainWindow.getMinimumSize ? mainWindow.getMinimumSize()[1] : 100;
+
+        const finalW = Math.max(w, minW);
+        const finalH = Math.max(h, minH);
+
+        mainWindow.setSize(Math.round(finalW), Math.round(finalH));
+
+        // Return the new size
+        return { width: finalW, height: finalH };
+    } catch (err) {
+        console.error('[Main] window-resize error:', err);
+        throw err;
+    }
 });
 

@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     
     // App info
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+    // Resize the main window: (width: number, height: number) => Promise<{width, height}>
+    resizeWindow: (width, height) => ipcRenderer.invoke('window-resize', width, height),
     
     // Spotify OAuth callback handler
     onSpotifyCallback: (callback) => {

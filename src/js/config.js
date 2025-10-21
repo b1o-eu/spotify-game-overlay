@@ -53,8 +53,8 @@ const CONFIG = {
         PLAY_PAUSE: 'ctrl+shift+space',
         NEXT_TRACK: 'ctrl+shift+d',
         PREV_TRACK: 'ctrl+shift+a',
-        VOLUME_UP: 'ctrl+shift+w',
-        VOLUME_DOWN: 'ctrl+shift+s'
+        VOLUME_UP: 'ctrl+shift+up',
+        VOLUME_DOWN: 'ctrl+shift+down'
     },
 
     // Storage Keys

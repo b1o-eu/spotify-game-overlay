@@ -68,7 +68,8 @@ body {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow-lg);
+    /* Remove box-shadow so the overlay appears flush with the desktop */
+    box-shadow: none;
     z-index: 9999;
     overflow: hidden;
     transition: var(--transition);
