@@ -482,20 +482,41 @@
 
 /* Toast area */
 .overlay-toast-area {
+    --overlay-toast-width: 280px;
+    width: var(--overlay-toast-width);
+    max-height: 40vh;
     display: flex;
     flex-direction: column;
     gap: 8px;
     right: 20px;
     bottom: 20px;
+    overflow: hidden;
 }
 
 .overlay-toast {
+    --overlay-toast-width: 280px;
+    width: var(--overlay-toast-width);
+    max-width: var(--overlay-toast-width);
     background: rgba(16, 16, 16, 0.75);
     color: #ffffff;
     padding: 8px 12px;
     border-radius: 8px;
-    min-width: 220px;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: overlay-toast-slide-in 0.3s ease;
+}
+
+.overlay-toast-icon {
+    font-size: 14px;
+}
+
+.overlay-toast-message {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Opaque toasts variant for overlay windows (higher contrast) */
@@ -514,6 +535,17 @@
 
 .overlay-toast.warning {
     border-left: 4px solid var(--warning-color);
+}
+
+@keyframes overlay-toast-slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
 /* Edit mode visuals */

@@ -278,6 +278,11 @@ class UIController {
                 }
             });
         }
+
+        // If running in Electron, observe local toasts and forward them to the overlay
+        if (window.electronAPI && window.electronAPI.isElectron) {
+            this.observeAndForwardToasts();
+        }
     }
 
     // Handle app state changes
@@ -1196,6 +1201,31 @@ class UIController {
                 toast.remove();
             }
         }, duration);
+    }
+
+    // Observe the main toast container and forward new toasts to the overlay window
+    observeAndForwardToasts() {
+        const toastContainer = this.elements.toastContainer;
+        if (!toastContainer || !window.electronAPI || typeof window.electronAPI.forwardOverlayUpdate !== 'function') {
+            return;
+        }
+
+        const observer = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node instanceof HTMLElement && node.classList.contains('toast')) {
+                        const type = node.classList.contains('success') ? 'success' : node.classList.contains('error') ? 'error' : 'info';
+                        const message = node.querySelector('.toast-message')?.textContent || '';
+                        
+                        if (message) {
+                            window.electronAPI.forwardOverlayUpdate({ type: 'TOAST', data: { message, type } });
+                        }
+                    }
+                }
+            }
+        });
+
+        observer.observe(toastContainer, { childList: true });
     }
 }
 

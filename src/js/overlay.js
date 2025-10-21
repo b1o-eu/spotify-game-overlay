@@ -38,7 +38,6 @@
                     this.createOverlayElements();
                     this.applyPositions();
                     this.attachUIHooks();
-                    this.observeToasts();
                     // Improve readability for overlay windows
                     this.container.classList.add('overlay-opaque');
                 } else {
@@ -385,6 +384,10 @@
                         try { this.setOverlayOpacity(pct / 100); } catch (e) {}
                     }
                 }
+            } else if (type === 'TOAST' && data) {
+                if (this.isOverlayWindow) {
+                    this.showToast(data.message, data.type);
+                }
             }
         }
 
@@ -636,38 +639,27 @@
             return out;
         }
 
-        observeToasts() {
-            const orig = document.getElementById('toast-container');
-            if (!orig) return;
+        showToast(message, type = 'info') {
+            if (!this.toastArea) return;
 
-            // Mirror newly added toasts into overlay toast area
-            const observer = new MutationObserver(mutations => {
-                for (const m of mutations) {
-                    for (const node of m.addedNodes) {
-                        if (!(node instanceof HTMLElement)) continue;
-                        const cloned = this.cloneToast(node);
-                        if (cloned) this.toastArea.appendChild(cloned);
-                    }
-                }
-            });
-
-            observer.observe(orig, { childList: true });
-        }
-
-        cloneToast(node) {
             try {
-                const type = (node && node.classList && node.classList.contains && (node.classList.contains('success') ? 'success' : node.classList.contains('error') ? 'error' : node.classList.contains('warning') ? 'warning' : 'info')) || 'info';
-                const msg = (node && typeof node.querySelector === 'function' && node.querySelector('.toast-message')?.textContent) || (node && node.textContent) || '';
+                const icons = {
+                    success: 'fa-check-circle',
+                    error: 'fa-exclamation-circle',
+                    warning: 'fa-exclamation-triangle',
+                    info: 'fa-info-circle'
+                };
+
                 const toast = document.createElement('div');
                 toast.className = `overlay-toast ${type}`;
-                toast.innerHTML = `<span class="overlay-toast-message">${msg}</span>`;
-                // Keep same lifetime as app (try reading duration if stored on node)
-                const duration = (node.__toastDuration || (window.CONFIG && window.CONFIG.UI && window.CONFIG.UI.TOAST_DURATION)) || 4000;
+                toast.innerHTML = `<i class="fas ${icons[type] || icons.info} overlay-toast-icon"></i><span class="overlay-toast-message">${message}</span>`;
+                
+                this.toastArea.appendChild(toast);
+
+                const duration = (window.CONFIG && window.CONFIG.UI && window.CONFIG.UI.TOAST_DURATION) || 3000;
                 setTimeout(() => toast.remove(), duration);
-                return toast;
             } catch (e) {
-                console.error('[OverlayManager] cloneToast', e);
-                return null;
+                console.error('[OverlayManager] showToast error:', e);
             }
         }
     }

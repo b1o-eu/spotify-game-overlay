@@ -1,6 +1,6 @@
 {
   "name": "spotify-overlay",
-  "version": "1.1-beta.2",
+  "version": "1.1-beta.3",
   "description": "A lightweight JavaScript-based overlay application that provides seamless Spotify integration for gamers",
   "main": "main.js",
   "homepage": "./",
