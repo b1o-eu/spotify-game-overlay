@@ -144,35 +144,6 @@ function createTray() {
     
     const contextMenu = Menu.buildFromTemplate([
         {
-            label: 'Show Menu',
-            click: () => {
-                if (mainWindow) {
-                    mainWindow.show();
-                    mainWindow.focus();
-                }
-            }
-        },
-        {
-            label: 'Hide Menu',
-            click: () => {
-                if (mainWindow) {
-                    mainWindow.hide();
-                }
-            }
-        },
-        { type: 'separator' },
-        {
-            label: 'Always on Top',
-            type: 'checkbox',
-            checked: true,
-            click: (item) => {
-                if (mainWindow) {
-                    mainWindow.setAlwaysOnTop(item.checked);
-                }
-            }
-        },
-        { type: 'separator' },
-        {
             label: 'Quit',
             click: () => {
                 app.quitting = true;
