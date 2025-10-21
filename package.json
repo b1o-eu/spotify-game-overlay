@@ -1,6 +1,6 @@
 {
   "name": "spotify-game-overlay",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "A lightweight JavaScript-based overlay application that provides seamless Spotify integration for gamers",
   "main": "main.js",
   "homepage": "./",
@@ -23,7 +23,7 @@
     "desktop-app",
     "electron"
   ],
-  "author": "b1o.eu | Julia Knoth",
+  "author": "b1o.eu",
   "license": "MIT",
   "build": {
     "appId": "eu.b1o.spotify-game-overlay",
@@ -35,6 +35,7 @@
       "main.js",
       "preload.js",
       "index.html",
+      "overlay.html",
       "callback.html",
       "src/**/*",
       "assets/**/*",

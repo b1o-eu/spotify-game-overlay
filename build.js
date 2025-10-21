@@ -30,43 +30,68 @@ function checkAssets() {
     console.log('Note: Replace placeholder icons in assets/ before distribution\n');
 }
 
-// Build for specific platform
+// Build for specific platform with retry-on-EBUSY to handle transient file locks
 function build(platform) {
     return new Promise((resolve, reject) => {
         const buildCommands = {
             'win': 'electron-builder --win',
-            'mac': 'electron-builder --mac', 
+            'mac': 'electron-builder --mac',
             'linux': 'electron-builder --linux',
             'all': 'electron-builder --win --mac --linux'
         };
-        
+
         const command = buildCommands[platform];
         if (!command) {
             reject(new Error(`Unknown platform: ${platform}`));
             return;
         }
-        
-        console.log(`Building for ${platform}...`);
-        console.log(`Running: ${command}\n`);
-        
-        const child = exec(command, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`uild failed for ${platform}:`, error);
-                reject(error);
-            } else {
-                console.log(`Build completed for ${platform}`);
-                resolve({ platform, stdout, stderr });
+
+        const maxAttempts = 6;
+        let attempt = 0;
+
+        function runAttempt() {
+            attempt++;
+            console.log(`Building for ${platform}...`);
+            console.log(`Running: ${command} (attempt ${attempt}/${maxAttempts})\n`);
+
+            let capturedStderr = '';
+
+            const child = exec(command, (error, stdout, stderr) => {
+                if (error) {
+                    const fullErrorLog = `${(error?.message || '')}\n${capturedStderr}`;
+                    // If this looks like a transient file-lock (EBUSY), retry with backoff
+                    if (attempt < maxAttempts && /EBUSY|resource busy|locked/i.test(fullErrorLog)) {
+                        const backoff = 300 * attempt;
+                        console.warn(`Transient error detected (attempt ${attempt}): ${fullErrorLog.split('\n')[0]}`);
+                        console.warn(`Retrying in ${backoff}ms...`);
+                        setTimeout(runAttempt, backoff);
+                        return;
+                    }
+
+                    console.error(`Build failed for ${platform}:`, error);
+                    reject(error);
+                } else {
+                    console.log(`Build completed for ${platform}`);
+                    resolve({ platform, stdout, stderr });
+                }
+            });
+
+            // Stream output in real-time
+            if (child.stdout) {
+                child.stdout.on('data', (data) => {
+                    process.stdout.write(data);
+                });
             }
-        });
-        
-        // Stream output in real-time
-        child.stdout.on('data', (data) => {
-            process.stdout.write(data);
-        });
-        
-        child.stderr.on('data', (data) => {
-            process.stderr.write(data);
-        });
+
+            if (child.stderr) {
+                child.stderr.on('data', (data) => {
+                    capturedStderr += data.toString();
+                    process.stderr.write(data);
+                });
+            }
+        }
+
+        runAttempt();
     });
 }
 

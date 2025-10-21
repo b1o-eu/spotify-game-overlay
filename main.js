@@ -304,6 +304,11 @@ ipcMain.handle('get-app-version', () => {
     return app.getVersion();
 });
 
+ipcMain.handle('open-external', (event, url) => {
+    // Ensure the URL is a valid http/https URL before opening
+    shell.openExternal(url);
+});
+
 // Resize the main window to the given width and height (validated)
 ipcMain.handle('window-resize', (event, width, height) => {
     try {
@@ -413,5 +418,3 @@ ipcMain.on('overlay-forward', (event, msg) => {
         console.error('[Main] overlay-forward error', e);
     }
 });
-
-

@@ -134,6 +134,25 @@
     border-top: 1px solid var(--border-color);
 }
 
+.about-section {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.about-section p {
+    margin: 4px 0;
+    line-height: 1.4;
+}
+
+.about-section a {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
 /* Toast Notifications */
 .toast-container {
     position: fixed;
@@ -445,15 +464,20 @@
     transition: width 0.2s linear;
 }
 
-.up-next-widget .overlay-upnext-header {
-    font-weight: 600;
-    margin-bottom: 6px;
+.up-next-widget {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
 }
 
-.overlay-upnext-list .overlay-upnext-item {
-    font-size: 13px;
-    color: #ffffff;
-    padding: 4px 0;
+.up-next-widget .up-next-label {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.up-next-widget .up-next-track {
+    color: rgba(255, 255, 255, 0.95);
 }
 
 /* Toast area */
@@ -494,17 +518,23 @@
 
 /* Edit mode visuals */
 .global-overlay.overlay-edit-mode {
+    /* Add a subtle background pattern to indicate the entire area is an edit canvas */
+    background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 16px 16px;
     pointer-events: auto;
 }
 
 .global-overlay.overlay-edit-mode .overlay-widget {
-    outline: 1px dashed rgba(255, 255, 255, 0.12);
+    /* Make draggable widgets more obvious */
+    outline: 2px dashed rgba(255, 255, 255, 0.25);
+    cursor: grab;
+    transition: outline 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.overlay-widget::after {
-    content: '';
-    position: absolute;
-    inset: 0;
+.global-overlay.overlay-edit-mode .overlay-widget:hover {
+    outline-color: rgba(255, 255, 255, 0.6);
+    outline-style: solid;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 /* Prevent overlay from blocking mouse when not editing */
@@ -514,4 +544,64 @@
 
 .global-overlay:not(.overlay-edit-mode) .overlay-widget {
     pointer-events: none;
+}
+
+.overlay-widget-toggle {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border-radius: 50%;
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 10; /* Ensure toggle is above other widget content */
+}
+
+.global-overlay.overlay-edit-mode .overlay-widget-toggle {
+    display: flex;
+}
+
+.overlay-widget.widget-hidden-in-edit .overlay-widget-toggle i::before {
+    content: "\f070"; /* fa-eye-slash */
+}
+
+/* Edit mode controls (e.g., "Finish Editing" button) */
+.overlay-edit-controls {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10003; /* Above widgets */
+    pointer-events: auto;
+}
+
+.overlay-edit-controls button {
+    background: var(--accent-primary, #1db954);
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.overlay-edit-controls button:hover {
+    background: var(--accent-primary-hover, #1ed760);
+    transform: translateY(-2px);
+}
+
+.overlay-widget.widget-hidden-in-edit {
+    opacity: 0.4;
+    border-style: dashed;
+    background: rgba(20, 20, 20, 0.3); /* Further fade out the background */
 }

@@ -1,6 +1,7 @@
 // Overlay Manager: creates a global, non-interactable overlay with movable widgets in edit mode
 (function () {
     const STORAGE_KEY = 'overlay_positions_v1';
+    const WIDGET_VISIBILITY_KEY = 'overlay_widget_visibility_v1';
     const DEFAULT_POSITIONS = {
         nowPlaying: { left: 20, top: 20 },
         upNext: { left: 20, top: 120 },
@@ -14,6 +15,7 @@
     class OverlayManager {
         constructor() {
             this.positions = this.loadPositions();
+            this.widgetVisibility = this.loadWidgetVisibility();
             this.editMode = false;
             this.dragging = null; // {el, startX, startY, origLeft, origTop}
             this.queue = [];
@@ -108,10 +110,8 @@
             this.upNext = document.createElement('div');
             this.upNext.className = 'overlay-widget up-next-widget';
             this.upNext.dataset.widgetId = 'upNext';
-            this.upNext.innerHTML = `
-                <div class="overlay-upnext-header">Up Next</div>
-                <div class="overlay-upnext-list"><span class="empty">No songs in queue</span></div>
-            `;
+            this.upNext.innerHTML =
+                '<span class="up-next-label">Up Next:</span> <span class="up-next-track">No songs in queue</span>';
             this.container.appendChild(this.upNext);
 
             // Toasts overlay container (mirrors in-page toasts)
@@ -127,6 +127,26 @@
                 el.style.pointerEvents = 'none';
             });
 
+            // Create visibility toggles inside each widget, only visible in edit mode
+            [this.nowPlaying, this.upNext].forEach(widget => {
+                const id = widget.dataset.widgetId;
+                const toggle = document.createElement('div');
+                toggle.className = 'overlay-widget-toggle';
+                toggle.innerHTML = `<i class="fas fa-eye"></i>`;
+                toggle.title = 'Toggle visibility';
+                toggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleWidgetVisibility(id);
+                });
+                widget.appendChild(toggle);
+            });
+
+            // Apply initial visibility
+            Object.entries(this.widgetVisibility).forEach(([id, visible]) => {
+                const el = this.container.querySelector(`[data-widget-id="${id}"]`);
+                if (el) el.style.display = visible ? '' : 'none';
+            });
+
             // If running inside overlay window, increase contrast / background opacity for readability
             if (this.isOverlayWindow) {
                 this.container.classList.add('overlay-opaque');
@@ -139,6 +159,12 @@
             // Recalculate marquee on window resize so scrolling starts/stops appropriately
             window.addEventListener('resize', () => {
                 try { this._updateMarqueeState(); } catch (_) {}
+            });
+            // Add keydown listener for exiting edit mode with Escape key
+            document.addEventListener('keydown', (e) => {
+                if (this.editMode && e.key === 'Escape') {
+                    this.toggleEditMode(false);
+                }
             });
         }
 
@@ -183,12 +209,22 @@
 
         toggleEditMode(enable) {
             this.editMode = typeof enable === 'boolean' ? enable : !this.editMode;
+            const editControls = document.getElementById('overlay-edit-controls');
+            const finishBtn = document.getElementById('finish-editing-btn');
 
             if (this.editMode) {
                 this.container.classList.add('overlay-edit-mode');
                 this.container.style.pointerEvents = 'auto';
                 [this.nowPlaying, this.upNext, this.toastArea].forEach(el => el.style.pointerEvents = 'auto');
                 // If running as a native overlay window, ask main process to make the window focusable/clickable
+
+                // Show the "Finish Editing" button
+                if (editControls) editControls.style.display = 'block';
+                if (finishBtn && !finishBtn.dataset.listenerAttached) {
+                    finishBtn.addEventListener('click', () => this.toggleEditMode(false));
+                    finishBtn.dataset.listenerAttached = 'true';
+                }
+
                 try {
                     if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.setIgnoreMouseEvents === 'function') {
                         // setIgnoreMouseEvents(false) so user can interact with overlay while editing
@@ -201,6 +237,10 @@
                 this.container.classList.remove('overlay-edit-mode');
                 this.container.style.pointerEvents = 'none';
                 [this.nowPlaying, this.upNext, this.toastArea].forEach(el => el.style.pointerEvents = 'none');
+
+                // Hide the "Finish Editing" button
+                if (editControls) editControls.style.display = 'none';
+
                 this.savePositions();
                 try {
                     if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.setIgnoreMouseEvents === 'function') {
@@ -210,9 +250,18 @@
                 } catch (e) {
                     console.warn('[OverlayManager] failed to request native mouse behavior change', e);
                 }
+
+                // Apply final visibility state when exiting edit mode
+                this.applyVisibility();
             }
             // Re-render up-next area on edit mode change so users see full queue while editing
             try { this.renderUpNext(); } catch (e) { /* ignore */ }
+            // Apply visibility classes for edit mode
+            Object.entries(this.widgetVisibility).forEach(([id, visible]) => {
+                const el = this.container.querySelector(`[data-widget-id="${id}"]`);
+                if (!el) return;
+                el.classList.toggle('widget-hidden-in-edit', !visible);
+            });
         }
 
         onPointerDown(e) {
@@ -220,6 +269,11 @@
             // Only start drag when pointer is over a widget
             const target = e.target.closest('.overlay-widget') || e.target.closest('[data-widget-id]');
             if (!target || !this.container.contains(target)) return;
+
+            // Do not start dragging if the click is on the visibility toggle itself
+            if (e.target.closest('.overlay-widget-toggle')) {
+                return;
+            }
 
             e.preventDefault();
             const rect = target.getBoundingClientRect();
@@ -231,6 +285,7 @@
                 origTop: rect.top + window.scrollY
             };
             target.classList.add('dragging');
+            target.style.cursor = 'grabbing';
         }
 
         onPointerMove(e) {
@@ -249,6 +304,7 @@
         onPointerUp() {
             if (!this.dragging) return;
             this.dragging.el.classList.remove('dragging');
+            this.dragging.el.style.cursor = 'grab';
             // Persist position for this widget
             const id = this.dragging.el.dataset.widgetId;
             if (id) {
@@ -258,6 +314,29 @@
                 this.savePositions();
             }
             this.dragging = null;
+        }
+
+        toggleWidgetVisibility(widgetId) {
+            if (!this.editMode) return;
+            const isVisible = !(this.widgetVisibility[widgetId] ?? true);
+            this.widgetVisibility[widgetId] = isVisible;
+
+            const el = this.container.querySelector(`[data-widget-id="${widgetId}"]`);
+            if (el) {
+                el.classList.toggle('widget-hidden-in-edit', !isVisible);
+                // Visibility outside of edit mode is handled by renderUpNext and a new applyVisibility method
+                this.applyVisibility();
+            }
+            this.saveWidgetVisibility();
+            this.renderUpNext(); // Re-render to apply new visibility rules
+        }
+
+        saveWidgetVisibility() {
+            try {
+                localStorage.setItem(WIDGET_VISIBILITY_KEY, JSON.stringify(this.widgetVisibility));
+            } catch (e) {
+                console.warn('[OverlayManager] Failed to save widget visibility', e);
+            }
         }
 
         savePositions() {
@@ -306,6 +385,14 @@
                     }
                 }
             }
+        }
+
+        applyVisibility() {
+            if (this.editMode) return; // In edit mode, CSS classes handle visibility
+            Object.entries(this.widgetVisibility).forEach(([id, visible]) => {
+                const el = this.container.querySelector(`[data-widget-id="${id}"]`);
+                if (el) el.style.display = visible ? '' : 'none';
+            });
         }
 
         updateNowPlaying(track) {
@@ -479,59 +566,44 @@
 
         renderUpNext() {
             // Determine whether to show the up-next widget and what to render.
-            if (!this.upNext || !this.upNext.querySelector) return;
-            const list = this.upNext.querySelector('.overlay-upnext-list');
-            if (!list) return;
+            if (!this.upNext) return;
+            const trackEl = this.upNext.querySelector('.up-next-track');
+            if (!trackEl) return;
 
-            // If in edit mode, always show the full queue (helpful when positioning widgets)
-                if (this.editMode) {
+            const isVisible = this.widgetVisibility.upNext ?? true;
+
+            // Always show in edit mode for positioning, but visually indicate if it's hidden.
+            if (this.editMode) {
                 this.upNext.style.display = 'block';
-                list.innerHTML = '';
-                if (!this.queue || this.queue.length === 0) {
-                    list.innerHTML = '<span class="empty">No songs in queue</span>';
-                    return;
-                }
-                this.queue.slice(0, 5).forEach(item => {
-                    const el = document.createElement('div');
-                    el.className = 'overlay-upnext-item';
-                    el.textContent = `${this.normalizeTitle(item.name)} — ${item.artists?.map(a => a.name).join(', ')}`;
-                    list.appendChild(el);
-                });
-                return;
-            }
-
-            // Not in edit mode: show only when there's an immediate next song and current track is near its end
-            if (!this.queue || this.queue.length === 0) {
-                this.upNext.style.display = 'none';
-                return;
-            }
-
-            // Need playback timing info to decide
-            const position = (this._position !== undefined) ? this._position : (this.playbackState?.progress_ms || 0);
-            const duration = (this._duration !== undefined) ? this._duration : (this.playbackState?.item?.duration_ms || 0);
-            if (!duration || duration <= 0) {
-                // unknown duration: hide
-                this.upNext.style.display = 'none';
-                return;
-            }
-
-            const remaining = Math.max(0, duration - position);
-            if (remaining <= UPNEXT_THRESHOLD_MS && this.queue.length > 0 && this.playbackState?.is_playing) {
-                // Show only the first queued item
-                this.upNext.style.display = 'block';
-                list.innerHTML = '';
-                const next = this.queue[0];
-                if (!next) {
-                    list.innerHTML = '<span class="empty">No songs in queue</span>';
-                    return;
-                }
-                const el = document.createElement('div');
-                el.className = 'overlay-upnext-item';
-                el.textContent = `${this.normalizeTitle(next.name)} — ${next.artists?.map(a => a.name).join(', ')}`;
-                list.appendChild(el);
+                // The 'widget-hidden-in-edit' class is handled by toggleEditMode
             } else {
-                // Hide when not near the end
-                this.upNext.style.display = 'none';
+                // When not in edit mode, hide if queue is empty OR if visibility is off
+                const hasQueue = this.queue && this.queue.length > 0;
+                this.upNext.style.display = isVisible && hasQueue ? '' : 'none';
+            }
+
+            // Set content whether visible or not, so it's ready if toggled on
+            if (!this.queue || this.queue.length === 0) {
+                trackEl.textContent = 'No songs in queue';
+                return;
+            }
+            
+            const next = this.queue[0];
+            if (!next) {
+                trackEl.textContent = 'No songs in queue';
+                return;
+            }
+            trackEl.textContent = `${this.normalizeTitle(next.name)} — ${next.artists?.map(a => a.name).join(', ')}`;
+        }
+
+        loadWidgetVisibility() {
+            try {
+                const raw = localStorage.getItem(WIDGET_VISIBILITY_KEY);
+                // Default all widgets to visible
+                return raw ? JSON.parse(raw) : { nowPlaying: true, upNext: true };
+            } catch (e) {
+                console.warn('[OverlayManager] failed to load widget visibility', e);
+                return { nowPlaying: true, upNext: true };
             }
         }
 

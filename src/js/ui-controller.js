@@ -111,7 +111,10 @@ class UIController {
             resetSettingsBtn: document.getElementById('reset-settings-btn'),
             
             // Toast container
-            toastContainer: document.getElementById('toast-container')
+            toastContainer: document.getElementById('toast-container'),
+
+            // About section
+            appVersion: document.getElementById('app-version')
         };
     }
 
@@ -162,6 +165,14 @@ class UIController {
         this.elements.connectSpotifySettingsBtn?.addEventListener('click', this.connectFromSettings.bind(this));
         this.elements.saveSettingsBtn?.addEventListener('click', this.saveSettings.bind(this));
         this.elements.resetSettingsBtn?.addEventListener('click', this.resetSettings.bind(this));
+        // About section link
+        const authorLink = document.getElementById('author-link');
+        authorLink?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (window.electronAPI && typeof window.electronAPI.openExternal === 'function') {
+                window.electronAPI.openExternal('https://b1o.eu');
+            }
+        });
         // Edit overlay button (toggles overlay edit mode when available)
         const editOverlayBtn = document.getElementById('edit-overlay-btn');
         editOverlayBtn?.addEventListener('click', () => {
@@ -169,7 +180,7 @@ class UIController {
                 // If running in Electron, forward a command so the overlay BrowserWindow toggles edit mode
                 if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.forwardOverlayUpdate === 'function') {
                     window.electronAPI.forwardOverlayUpdate({ type: 'COMMAND', data: { action: 'toggleEditMode' } });
-                    this.showToast('Toggling overlay edit mode', 'info');
+                    this.showToast('Entering overlay edit mode. Drag widgets to move them.', 'info', 5000);
                     return;
                 }
 
@@ -177,7 +188,7 @@ class UIController {
                 if (window.overlayManager && typeof window.overlayManager.toggleEditMode === 'function') {
                     window.overlayManager.toggleEditMode();
                     const mode = window.overlayManager.editMode ? 'enabled' : 'disabled';
-                    this.showToast(`Overlay edit mode ${mode}`, 'info');
+                    this.showToast(`Overlay edit mode ${mode}. Drag widgets to move them.`, 'info', 5000);
                 } else {
                     this.showToast('Overlay manager not available', 'warning');
                 }
@@ -686,6 +697,15 @@ class UIController {
     showSettings() {
         this.loadSettingsToForm();
         // Always show the in-page settings modal so settings appear inside the app
+        // Fetch and display app version (Electron only)
+        if (this.elements.appVersion && window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
+            window.electronAPI.getAppVersion()
+                .then(version => {
+                    if (this.elements.appVersion) {
+                        this.elements.appVersion.textContent = version;
+                    }
+                }).catch(err => console.warn('Failed to get app version', err));
+        }
         this.elements.settingsModal?.classList.remove('hidden');
     }
 
@@ -706,7 +726,7 @@ class UIController {
             this.elements.opacitySlider.value = settings.overlayOpacity ?? settings.opacity ?? 95;
             this.elements.opacityValue.textContent = `${this.elements.opacitySlider.value}%`;
         }
-        
+
         if (this.elements.clientIdInput) {
             this.elements.clientIdInput.value = localStorage.getItem(CONFIG.STORAGE.CLIENT_ID) || '';
         }
@@ -844,7 +864,7 @@ class UIController {
         if (this.elements.opacitySlider) {
             settings.opacity = parseInt(this.elements.opacitySlider.value);
         }
-        
+
         if (this.elements.clientIdInput) {
             const clientId = this.elements.clientIdInput.value.trim();
             if (clientId) {
