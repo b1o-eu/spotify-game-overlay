@@ -412,7 +412,7 @@
                 }
 
                 if (title) {
-                    const normalized = this.normalizeTitle(track.name) || 'Unknown Track';
+                    const normalized = this.normalizeText(track.name) || 'Unknown Track';
                     // If title is inside marquee-content span, update that instead
                     const marqueeContent = this.nowPlaying.querySelector('.marquee-content');
                     if (marqueeContent) {
@@ -423,7 +423,11 @@
                         title.textContent = normalized;
                     }
                 }
-                if (artist) artist.textContent = track.artists ? track.artists.map(a => a.name).join(', ') : '';
+                if (artist) {
+                    artist.textContent = track.artists
+                        ? track.artists.map(a => this.normalizeText(a.name)).join(', ')
+                        : '';
+                }
                 if (img) img.src = track.album?.images?.[0]?.url || img.src;
             } catch (e) {
                 console.error('[OverlayManager] updateNowPlaying', e);
@@ -610,15 +614,21 @@
 
         // Normalize a track title by removing any parenthetical parts like "(feat. Artist)" or "(Live)"
         // and trimming extra whitespace. Preserves other punctuation.
-        normalizeTitle(name) {
+        normalizeText(name) {
             if (!name || typeof name !== 'string') return name;
             // Remove any occurrences of parentheses and their contents, including nested ones.
             // We'll repeatedly strip the innermost parentheses until none remain.
             let out = name;
             const parenRe = /\([^()]*\)/g;
+            const bracketRe = /\[[^[\]]*\]/g;
+
             while (parenRe.test(out)) {
                 out = out.replace(parenRe, '');
             }
+            while (bracketRe.test(out)) {
+                out = out.replace(bracketRe, '');
+            }
+
             // Replace multiple spaces with single space and trim
             out = out.replace(/\s{2,}/g, ' ').trim();
             // If title ends with stray hyphen or em-dash from removed part like "Song - " or "Song — ", trim that too
