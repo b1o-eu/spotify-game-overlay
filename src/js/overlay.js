@@ -5,7 +5,8 @@
     const DEFAULT_POSITIONS = {
         nowPlaying: { left: 20, top: 20 },
         upNext: { left: 20, top: 120 },
-        toasts: { right: 20, bottom: 20 }
+        toasts: { right: 20, bottom: 20 },
+        keybinds: { left: 20, bottom: 20 }
     };
     // How close to the end of the current song (ms) before showing the single "Up Next" item
     const UPNEXT_THRESHOLD_MS = 10000; // 10 seconds
@@ -20,6 +21,7 @@
             this.dragging = null; // {el, startX, startY, origLeft, origTop}
             this.queue = [];
             this.playbackState = null; // latest playback state (progress/duration/is_playing)
+            this.hotkeys = []; // list of hotkeys
 
             // Detect if this code runs inside a dedicated overlay BrowserWindow
             this.isOverlayWindow = !!(window.electronAPI && window.electronAPI.isElectron && window.electronAPI.isOverlayWindow);
@@ -38,7 +40,6 @@
                     this.createOverlayElements();
                     this.applyPositions();
                     this.attachUIHooks();
-                    this.observeToasts();
                     // Improve readability for overlay windows
                     this.container.classList.add('overlay-opaque');
                 } else {
@@ -97,7 +98,7 @@
                             <span class="marquee-content overlay-track">Not Playing</span>
                         </div>
                     </div>
-                    <div class="overlay-artist">Connect to Spotify</div>
+                    <div class="overlay-artist" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Connect to Spotify</div>
                     <div class="overlay-progress">
                         <div class="overlay-time current">0:00</div>
                         <div class="overlay-progress-bar"><div class="overlay-progress-fill"></div></div>
@@ -121,15 +122,23 @@
             this.toastArea.dataset.widgetId = 'toasts';
             this.container.appendChild(this.toastArea);
 
+            // Keybinds display widget
+            this.keybindsWidget = document.createElement('div');
+            this.keybindsWidget.className = 'overlay-widget keybinds-widget';
+            this.keybindsWidget.dataset.widgetId = 'keybinds';
+            this.keybindsWidget.innerHTML = `
+                <div class="keybinds-title">Keybinds</div>
+                <ul class="keybinds-list"><li>No keybinds configured</li></ul>`;
+            this.container.appendChild(this.keybindsWidget);
             // Make widgets absolute positioned
-            [this.nowPlaying, this.upNext, this.toastArea].forEach(el => {
+            [this.nowPlaying, this.upNext, this.toastArea, this.keybindsWidget].forEach(el => {
                 el.style.position = 'absolute';
                 // When not editing, widgets shouldn't capture pointer events
                 el.style.pointerEvents = 'none';
             });
 
             // Create visibility toggles inside each widget, only visible in edit mode
-            [this.nowPlaying, this.upNext].forEach(widget => {
+            [this.nowPlaying, this.upNext, this.toastArea, this.keybindsWidget].forEach(widget => {
                 const id = widget.dataset.widgetId;
                 const toggle = document.createElement('div');
                 toggle.className = 'overlay-widget-toggle';
@@ -139,6 +148,11 @@
                     e.stopPropagation();
                     this.toggleWidgetVisibility(id);
                 });
+                // Set initial icon state
+                const isVisible = this.widgetVisibility[id] ?? true;
+                if (!isVisible) {
+                    toggle.querySelector('i').classList.replace('fa-eye', 'fa-eye-slash');
+                }
                 widget.appendChild(toggle);
             });
 
@@ -173,10 +187,12 @@
             const p = this.positions || {};
             const now = p.nowPlaying || DEFAULT_POSITIONS.nowPlaying;
             const next = p.upNext || DEFAULT_POSITIONS.upNext;
+            const keybinds = p.keybinds || DEFAULT_POSITIONS.keybinds;
             const toasts = p.toasts || DEFAULT_POSITIONS.toasts;
 
             this.setElPos(this.nowPlaying, now.left, now.top);
             this.setElPos(this.upNext, next.left, next.top);
+            this.setElPos(this.keybindsWidget, keybinds.left, keybinds.top);
 
             // Toasts anchored to bottom-right by default
             if (toasts.left !== undefined && toasts.top !== undefined) {
@@ -216,10 +232,17 @@
             if (this.editMode) {
                 this.container.classList.add('overlay-edit-mode');
                 this.container.style.pointerEvents = 'auto';
-                [this.nowPlaying, this.upNext, this.toastArea].forEach(el => el.style.pointerEvents = 'auto');
+                [this.nowPlaying, this.upNext, this.toastArea, this.keybindsWidget].forEach(el => el.style.pointerEvents = 'auto');
                 // If running as a native overlay window, ask main process to make the window focusable/clickable
 
                 // Show the "Finish Editing" button
+                // Also ensure the toast area is visible for positioning, even if empty.
+                if (this.toastArea) {
+                    this.toastArea.style.display = 'flex'; // Use flex as it's a flex container
+                    // To make it more obvious, we can add a placeholder toast
+                    this.showToast('Toasts appear here', 'info', 999999, true);
+                }
+
                 if (editControls) editControls.style.display = 'block';
                 if (finishBtn && !finishBtn.dataset.listenerAttached) {
                     finishBtn.addEventListener('click', () => this.toggleEditMode(false));
@@ -237,9 +260,16 @@
             } else {
                 this.container.classList.remove('overlay-edit-mode');
                 this.container.style.pointerEvents = 'none';
-                [this.nowPlaying, this.upNext, this.toastArea].forEach(el => el.style.pointerEvents = 'none');
+                [this.nowPlaying, this.upNext, this.toastArea, this.keybindsWidget].forEach(el => el.style.pointerEvents = 'none');
 
                 // Hide the "Finish Editing" button
+                if (this.toastArea) {
+                    // Hide placeholder toasts when exiting edit mode
+                    const placeholderToasts = this.toastArea.querySelectorAll('.placeholder-toast');
+                    placeholderToasts.forEach(t => t.remove());
+                    // If there are no real toasts, it will become invisible again.
+                    if (this.toastArea.childElementCount === 0) this.toastArea.style.display = '';
+                }
                 if (editControls) editControls.style.display = 'none';
 
                 this.savePositions();
@@ -325,6 +355,10 @@
             const el = this.container.querySelector(`[data-widget-id="${widgetId}"]`);
             if (el) {
                 el.classList.toggle('widget-hidden-in-edit', !isVisible);
+                // Also update the icon inside the toggle button
+                const icon = el.querySelector('.overlay-widget-toggle i');
+                if (icon) icon.classList.toggle('fa-eye-slash', !isVisible);
+                if (icon) icon.classList.toggle('fa-eye', isVisible);
                 // Visibility outside of edit mode is handled by renderUpNext and a new applyVisibility method
                 this.applyVisibility();
             }
@@ -369,6 +403,8 @@
                 // store playback state and update visibility of up-next widget
                 this.playbackState = data;
                 this.updatePlaybackState(data);
+            } else if (type === 'hotkeys') {
+                this.updateHotkeys(data);
             }
             // Support commands forwarded from main/renderer
             if (type === 'COMMAND' && data && data.action) {
@@ -384,6 +420,10 @@
                     if (pct !== null && !Number.isNaN(pct)) {
                         try { this.setOverlayOpacity(pct / 100); } catch (e) {}
                     }
+                }
+            } else if (type === 'TOAST' && data) {
+                if (this.isOverlayWindow) {
+                    this.showToast(data.message, data.type);
                 }
             }
         }
@@ -412,7 +452,7 @@
                 }
 
                 if (title) {
-                    const normalized = this.normalizeTitle(track.name) || 'Unknown Track';
+                    const normalized = this.normalizeText(track.name) || 'Unknown Track';
                     // If title is inside marquee-content span, update that instead
                     const marqueeContent = this.nowPlaying.querySelector('.marquee-content');
                     if (marqueeContent) {
@@ -423,7 +463,11 @@
                         title.textContent = normalized;
                     }
                 }
-                if (artist) artist.textContent = track.artists ? track.artists.map(a => a.name).join(', ') : '';
+                if (artist) {
+                    artist.textContent = track.artists
+                        ? track.artists.map(a => this.normalizeText(a.name)).join(', ')
+                        : '';
+                }
                 if (img) img.src = track.album?.images?.[0]?.url || img.src;
             } catch (e) {
                 console.error('[OverlayManager] updateNowPlaying', e);
@@ -529,6 +573,32 @@
             this.renderUpNext();
         }
 
+        updateHotkeys(hotkeys) {
+            this.hotkeys = hotkeys || [];
+            this.renderKeybinds();
+        }
+
+        renderKeybinds() {
+            if (!this.keybindsWidget) return;
+            const listEl = this.keybindsWidget.querySelector('.keybinds-list');
+            if (!listEl) return;
+
+            listEl.innerHTML = ''; // Clear existing
+
+            if (!this.hotkeys || this.hotkeys.length === 0) {
+                listEl.innerHTML = '<li>No keybinds configured</li>';
+                return;
+            }
+
+            this.hotkeys.forEach(hotkey => {
+                const li = document.createElement('li');
+                li.className = 'keybind-item';
+                const formattedCombo = hotkey.combination.replace(/\+/g, ' + ').replace(/\b\w/g, c => c.toUpperCase());
+                li.innerHTML = `<span class="keybind-combo">${formattedCombo}</span> <span class="keybind-action">${hotkey.description}</span>`;
+                listEl.appendChild(li);
+            });
+        }
+
         updateProgressUI() {
             if (!this.nowPlaying || !this.nowPlaying.querySelector) return;
             const current = this.nowPlaying.querySelector('.overlay-time.current');
@@ -600,25 +670,31 @@
         loadWidgetVisibility() {
             try {
                 const raw = localStorage.getItem(WIDGET_VISIBILITY_KEY);
-                // Default all widgets to visible
-                return raw ? JSON.parse(raw) : { nowPlaying: true, upNext: true };
+                const defaults = { nowPlaying: true, upNext: true, toasts: true, keybinds: true };
+                return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
             } catch (e) {
                 console.warn('[OverlayManager] failed to load widget visibility', e);
-                return { nowPlaying: true, upNext: true };
+                return { nowPlaying: true, upNext: true, toasts: true, keybinds: true };
             }
         }
 
         // Normalize a track title by removing any parenthetical parts like "(feat. Artist)" or "(Live)"
         // and trimming extra whitespace. Preserves other punctuation.
-        normalizeTitle(name) {
+        normalizeText(name) {
             if (!name || typeof name !== 'string') return name;
             // Remove any occurrences of parentheses and their contents, including nested ones.
             // We'll repeatedly strip the innermost parentheses until none remain.
             let out = name;
             const parenRe = /\([^()]*\)/g;
+            const bracketRe = /\[[^[\]]*\]/g;
+
             while (parenRe.test(out)) {
                 out = out.replace(parenRe, '');
             }
+            while (bracketRe.test(out)) {
+                out = out.replace(bracketRe, '');
+            }
+
             // Replace multiple spaces with single space and trim
             out = out.replace(/\s{2,}/g, ' ').trim();
             // If title ends with stray hyphen or em-dash from removed part like "Song - " or "Song — ", trim that too
@@ -626,38 +702,41 @@
             return out;
         }
 
-        observeToasts() {
-            const orig = document.getElementById('toast-container');
-            if (!orig) return;
+        showToast(message, type = 'info', duration, isPlaceholder = false) {
+            if (!this.toastArea) return;
+            // Do not show toasts if the widget is hidden, unless it's a placeholder in edit mode
+            const isToastsVisible = this.widgetVisibility.toasts ?? true;
+            if (!isToastsVisible && !isPlaceholder) return;
 
-            // Mirror newly added toasts into overlay toast area
-            const observer = new MutationObserver(mutations => {
-                for (const m of mutations) {
-                    for (const node of m.addedNodes) {
-                        if (!(node instanceof HTMLElement)) continue;
-                        const cloned = this.cloneToast(node);
-                        if (cloned) this.toastArea.appendChild(cloned);
-                    }
-                }
-            });
-
-            observer.observe(orig, { childList: true });
-        }
-
-        cloneToast(node) {
             try {
-                const type = (node && node.classList && node.classList.contains && (node.classList.contains('success') ? 'success' : node.classList.contains('error') ? 'error' : node.classList.contains('warning') ? 'warning' : 'info')) || 'info';
-                const msg = (node && typeof node.querySelector === 'function' && node.querySelector('.toast-message')?.textContent) || (node && node.textContent) || '';
+                // In non-edit mode, if the toast area is hidden, make it visible
+                if (!this.editMode && this.toastArea.style.display === 'none') {
+                    this.toastArea.style.display = 'flex';
+                }
+                const icons = {
+                    success: 'fa-check-circle',
+                    error: 'fa-exclamation-circle',
+                    warning: 'fa-exclamation-triangle',
+                    info: 'fa-info-circle'
+                };
+
                 const toast = document.createElement('div');
                 toast.className = `overlay-toast ${type}`;
-                toast.innerHTML = `<span class="overlay-toast-message">${msg}</span>`;
-                // Keep same lifetime as app (try reading duration if stored on node)
-                const duration = (node.__toastDuration || (window.CONFIG && window.CONFIG.UI && window.CONFIG.UI.TOAST_DURATION)) || 4000;
-                setTimeout(() => toast.remove(), duration);
-                return toast;
+                if (isPlaceholder) toast.classList.add('placeholder-toast');
+                toast.innerHTML = `<i class="fas ${icons[type] || icons.info} overlay-toast-icon"></i><span class="overlay-toast-message">${message}</span>`;
+                
+                this.toastArea.appendChild(toast);
+
+                const finalDuration = duration || (window.CONFIG && window.CONFIG.UI && window.CONFIG.UI.TOAST_DURATION) || 3000;
+                setTimeout(() => {
+                    toast.remove();
+                    // If it was the last toast, hide the container again (unless in edit mode)
+                    if (!this.editMode && this.toastArea.childElementCount === 0) {
+                        this.toastArea.style.display = ''; // Revert to default display
+                    }
+                }, finalDuration);
             } catch (e) {
-                console.error('[OverlayManager] cloneToast', e);
-                return null;
+                console.error('[OverlayManager] showToast error:', e);
             }
         }
     }

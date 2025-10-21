@@ -278,6 +278,11 @@ class UIController {
                 }
             });
         }
+
+        // If running in Electron, observe local toasts and forward them to the overlay
+        if (window.electronAPI && window.electronAPI.isElectron) {
+            this.observeAndForwardToasts();
+        }
     }
 
     // Handle app state changes
@@ -306,6 +311,12 @@ class UIController {
         // Forward to overlay window (main process will forward to overlay BrowserWindow)
         try {
             if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.forwardOverlayUpdate === 'function') {
+                // Also forward hotkeys if they changed
+                if (type === 'settings' && data.hotkeys) {
+                    const hotkeysForOverlay = window.hotkeyManager.getRegisteredHotkeys();
+                    window.electronAPI.forwardOverlayUpdate({ type: 'hotkeys', data: hotkeysForOverlay });
+                }
+
                 window.electronAPI.forwardOverlayUpdate({ type, data });
             }
         } catch (e) {
@@ -862,7 +873,7 @@ class UIController {
         }
         
         if (this.elements.opacitySlider) {
-            settings.opacity = parseInt(this.elements.opacitySlider.value);
+            settings.overlayOpacity = parseInt(this.elements.opacitySlider.value);
         }
 
         if (this.elements.clientIdInput) {
@@ -907,8 +918,15 @@ class UIController {
         
         // Other UI updates
         this.applyTheme();
-        this.applyOpacity();
+        this.applyOverlayOpacity();
 
+        // Forward new hotkey config to overlay
+        try {
+            const hotkeysForOverlay = window.hotkeyManager.getRegisteredHotkeys();
+            window.electronAPI.forwardOverlayUpdate({ type: 'hotkeys', data: hotkeysForOverlay });
+        } catch (e) {
+            console.warn('Failed to forward hotkey update to overlay', e);
+        }
         this.showToast('Settings saved', 'success');
         this.hideSettings();
     }
@@ -919,7 +937,7 @@ class UIController {
         
         this.loadSettingsToForm();
         this.applyTheme();
-        this.applyOpacity();
+        this.applyOverlayOpacity();
         
         this.showToast('Settings reset to default', 'success');
     }
@@ -1048,6 +1066,14 @@ class UIController {
                     this.showToast(`Global hotkeys registered (${reg.length})`, 'success');
                 }
             }
+
+            // After registering, ensure the overlay has the latest hotkey info
+            if (window.hotkeyManager) {
+                const hotkeysForOverlay = window.hotkeyManager.getRegisteredHotkeys();
+                if (window.electronAPI && typeof window.electronAPI.forwardOverlayUpdate === 'function') {
+                    window.electronAPI.forwardOverlayUpdate({ type: 'hotkeys', data: hotkeysForOverlay });
+                }
+            }
         } catch (err) {
             console.error('[UIController] registerGlobalHotkeysIfEnabled error:', err);
         }
@@ -1059,31 +1085,6 @@ class UIController {
             this.elements.menu?.classList.add('light-theme');
         } else {
             this.elements.menu?.classList.remove('light-theme');
-        }
-    }
-
-    applyOpacity() {
-        const opacity = window.appState.settings.opacity / 100;
-        if (this.elements.menu) {
-            this.elements.menu.style.opacity = opacity;
-        }
-        // Also apply overlay opacity if overlay exists in this window
-        try {
-            // If running in the same renderer that created overlayManager
-            if (window.overlayManager && typeof window.overlayManager.setOverlayOpacity === 'function') {
-                window.overlayManager.setOverlayOpacity(opacity);
-            }
-        } catch (e) {
-            // ignore
-        }
-
-        // If running under Electron and overlay runs in a separate BrowserWindow, forward the setting
-        try {
-            if (window.electronAPI && window.electronAPI.isElectron && typeof window.electronAPI.forwardOverlayUpdate === 'function') {
-                window.electronAPI.forwardOverlayUpdate({ type: 'COMMAND', data: { action: 'setOpacity', opacity: Math.round(opacity * 100) } });
-            }
-        } catch (e) {
-            // non-fatal
         }
     }
 
@@ -1221,6 +1222,31 @@ class UIController {
                 toast.remove();
             }
         }, duration);
+    }
+
+    // Observe the main toast container and forward new toasts to the overlay window
+    observeAndForwardToasts() {
+        const toastContainer = this.elements.toastContainer;
+        if (!toastContainer || !window.electronAPI || typeof window.electronAPI.forwardOverlayUpdate !== 'function') {
+            return;
+        }
+
+        const observer = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node instanceof HTMLElement && node.classList.contains('toast')) {
+                        const type = node.classList.contains('success') ? 'success' : node.classList.contains('error') ? 'error' : 'info';
+                        const message = node.querySelector('.toast-message')?.textContent || '';
+                        
+                        if (message) {
+                            window.electronAPI.forwardOverlayUpdate({ type: 'TOAST', data: { message, type } });
+                        }
+                    }
+                }
+            }
+        });
+
+        observer.observe(toastContainer, { childList: true });
     }
 }
 
