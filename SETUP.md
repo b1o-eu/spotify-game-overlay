@@ -5,7 +5,7 @@
 1. **Spotify Premium Account** - Required for playback control
 2. **Spotify Developer Account** - To create an application and get Client ID
 3. **Web Browser** - Chrome, Firefox, Edge, or Safari
-4. **Local Web Server** - For serving the application (Python HTTP server works)
+4. **Local Web Server** - For serving the application (Python/Node or VS Code Live Server)
 
 ## Setup Steps
 
@@ -17,8 +17,10 @@
 4. Fill in the details:
    - **App Name**: Spotify Game Overlay
    - **App Description**: Gaming overlay for Spotify control
-   - **Website**: http://localhost:8080
-   - **Redirect URI**: http://localhost:8080/callback
+    - **Website**: https://localhost:8080
+    - **Redirect URIs**: add BOTH of the following so either Electron or Web flow works
+       - https://localhost:8080/callback (Electron app)
+       - http://localhost:5500/callback.html (Web via Live Server; ensure it matches your actual port)
 5. Accept the terms and create the app
 6. Copy your **Client ID** (you'll need this later)
 
@@ -52,6 +54,7 @@ http-server -p 8080
 1. Install the "Live Server" extension
 2. Right-click on `index.html`
 3. Select "Open with Live Server"
+   - Note the URL it opens (e.g., http://127.0.0.1:5500). Ensure your Spotify app includes the matching Redirect URI (e.g., http://127.0.0.1:5500/callback.html)
 
 ### 3. Configure the Overlay
 
@@ -97,10 +100,13 @@ http-server -p 8080
 
 ## Troubleshooting
 
-### "Authentication Error"
+### "Authentication Error" or `INVALID_CLIENT: Insecure redirect URI`
 - Make sure your Client ID is correct
-- Verify the redirect URI is set to `http://localhost:8080/callback`
-- Check that you're running the server on port 8080
+- Verify the Redirect URI in the Spotify Dashboard EXACTLY matches what the app is using:
+   - Electron app: `https://localhost:8080/callback`
+   - Browser with Live Server: `${window.location.origin}/callback.html` (e.g., `http://localhost:5500/callback.html`)
+- If your Live Server uses a different port, update the Redirect URI accordingly in the Spotify Dashboard and try again.
+- If your Live Server uses a different port, update the Redirect URI accordingly in the Spotify Dashboard and try again.
 
 ### "No Active Device"
 - Open Spotify on your computer or phone

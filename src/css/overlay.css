@@ -19,7 +19,8 @@
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-lg);
     width: 90%;
-    max-width: 500px;
+    /* Match the main overlay width defined in styles.css (380px) so modals and the overlay are equally wide */
+    max-width: 380px;
     max-height: 90vh;
     overflow-y: auto;
 }

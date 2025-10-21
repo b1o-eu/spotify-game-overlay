@@ -2,90 +2,75 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spotify OAuth Callback</title>
+    <title>Spotify Auth Callback</title>
     <style>
         body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #121212;
-            color: #ffffff;
+            font-family: sans-serif;
+            background-color: #121212;
+            color: #fff;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             height: 100vh;
             margin: 0;
         }
         .container {
             text-align: center;
-            padding: 40px;
-            background: #1e1e1e;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #333;
-            border-top: 4px solid #1db954;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .success {
-            color: #1db954;
-        }
-        .error {
-            color: #ff4444;
-        }
+        .success { color: #1db954; }
+        .error { color: #f44336; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="spinner"></div>
-        <h2>Connecting to Spotify...</h2>
-        <p>Please wait while we complete the authentication process.</p>
-        <p id="status"></p>
+        <h1 id="message">Processing authentication...</h1>
+        <p id="details"></p>
     </div>
-
     <script>
-        // This page handles the OAuth callback from Spotify
-        function handleCallback() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const authCode = urlParams.get('code');
-            const error = urlParams.get('error');
-            
+        document.addEventListener('DOMContentLoaded', () => {
+            const messageEl = document.getElementById('message');
+            const detailsEl = document.getElementById('details');
+
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const error = params.get('error');
+            const state = params.get('state');
+
             if (error) {
-                document.querySelector('.spinner').style.display = 'none';
-                document.querySelector('h2').textContent = 'Authentication Failed';
-                document.querySelector('h2').className = 'error';
-                document.getElementById('status').innerHTML = `Error: ${error}<br><a href="/" style="color: #1db954;">Return to Overlay</a>`;
+                messageEl.textContent = 'Authentication Failed';
+                messageEl.classList.add('error');
+                detailsEl.textContent = `Error: ${error}. You can close this window.`;
+                // Optionally, notify the main app of the error
+                if (window.opener) {
+                    window.opener.postMessage({ type: 'spotify-auth-error', error: error }, window.location.origin);
+                }
                 return;
             }
-            
-            if (authCode) {
-                document.querySelector('h2').textContent = 'Authentication Successful!';
-                document.querySelector('h2').className = 'success';
-                document.querySelector('.spinner').style.display = 'none';
-                document.getElementById('status').innerHTML = 'Processing authorization...<br><a href="/" style="color: #1db954;">Click here if not redirected automatically</a>';
-                
-                // Redirect back to main page with the authorization code
-                setTimeout(() => {
-                    window.location.href = `/?code=${authCode}`;
-                }, 2000);
+
+            if (code) {
+                messageEl.textContent = 'Authentication Successful!';
+                messageEl.classList.add('success');
+                detailsEl.textContent = 'You can now close this window and return to the overlay.';
+
+                // Send the authorization code to the main application window
+                // Ensure the main app is listening for this message
+                if (window.opener) {
+                    window.opener.postMessage({ type: 'spotify-auth-code', code: code, state: state }, window.location.origin);
+                } else {
+                    // Fallback if opener is not available (e.g., browser security)
+                    // This part might need a more robust solution for a web version
+                    localStorage.setItem('spotify_auth_code', code);
+                    localStorage.setItem('spotify_auth_state', state);
+                }
+
+                // Close the window automatically after a short delay
+                setTimeout(() => window.close(), 2000);
             } else {
-                document.querySelector('.spinner').style.display = 'none';
-                document.querySelector('h2').textContent = 'No Authorization Code';
-                document.querySelector('h2').className = 'error';
-                document.getElementById('status').innerHTML = 'No authorization code received.<br><a href="/" style="color: #1db954;">Return to Overlay</a>';
+                messageEl.textContent = 'Invalid Callback URL';
+                messageEl.classList.add('error');
+                detailsEl.textContent = 'No authorization code found. Please try again.';
             }
-        }
-        
-        // Run when page loads
-        handleCallback();
+        });
     </script>
 </body>
 </html>

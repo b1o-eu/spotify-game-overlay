@@ -33,7 +33,7 @@
 
 body {
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg-primary);
+    background: transparent;
     color: var(--text-primary);
     overflow: hidden;
     user-select: none;
@@ -88,6 +88,19 @@ body {
     background: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-color);
     cursor: move;
+}
+
+/* Allow dragging the window by the header in Electron (frameless window) */
+.overlay-header {
+    -webkit-app-region: drag;
+}
+
+/* Prevent interactive controls from being draggable */
+.overlay-header .icon-btn,
+.overlay-header button,
+.overlay-header input,
+.overlay-header select {
+    -webkit-app-region: no-drag;
 }
 
 .logo {

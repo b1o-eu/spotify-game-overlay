@@ -2,14 +2,26 @@
 const CONFIG = {
     // Spotify API Configuration
     SPOTIFY: {
-        CLIENT_ID: '', // To be set by user in settings
+        CLIENT_ID: 'YOUR_CLIENT_ID', // To be set by user in settings
         REDIRECT_URI: (() => {
             // Check if running in Electron
             if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.isElectron) {
-                return 'spotify-overlay://callback';
+                // Electron hosts a local HTTPS server on port 8080 (see main.js)
+                // Using HTTPS to satisfy stricter redirect URI security requirements.
+                return 'https://localhost:8080/callback';
             }
             // Fallback for web version
-            return 'http://127.0.0.1:5500/callback.html';
+            try {
+                if (typeof window !== 'undefined' && window.location) {
+                    const origin = window.location.origin; // e.g., http://127.0.0.1:5500 or http://localhost:5500
+                    // If we're running from a local dev server (localhost or 127.0.0.1), point to callback.html on the same origin.
+                    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\\d+)?$/i.test(origin)) {
+                        return `${origin}/callback.html`;
+                    }
+                }
+            } catch (_) {}
+            // Sensible default for docs/quick start (also add this in Spotify Dashboard)
+            return 'https://localhost:8080/callback';
         })(),
         SCOPES: [
             'user-read-playback-state',
@@ -39,10 +51,10 @@ const CONFIG = {
     HOTKEYS: {
         TOGGLE_OVERLAY: 'ctrl+shift+m',
         PLAY_PAUSE: 'ctrl+shift+space',
-        NEXT_TRACK: 'ctrl+shift+right',
-        PREV_TRACK: 'ctrl+shift+left',
-        VOLUME_UP: 'ctrl+shift+up',
-        VOLUME_DOWN: 'ctrl+shift+down'
+        NEXT_TRACK: 'ctrl+shift+d',
+        PREV_TRACK: 'ctrl+shift+a',
+        VOLUME_UP: 'ctrl+shift+w',
+        VOLUME_DOWN: 'ctrl+shift+s'
     },
 
     // Storage Keys
@@ -60,7 +72,7 @@ const CONFIG = {
     // Default Settings
     DEFAULTS: {
         theme: 'dark',
-        opacity: 95,
+        opacity: 100,
         position: { x: 20, y: 20 },
         autoHide: false,
         showNotifications: true,

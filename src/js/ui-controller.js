@@ -74,7 +74,7 @@ class UIController {
             opacitySlider: document.getElementById('opacity-slider'),
             opacityValue: document.getElementById('opacity-value'),
             clientIdInput: document.getElementById('client-id'),
-            connectSpotifySettingsBtn: document.getElementById('connect-spotify-btn'),
+            connectSpotifySettingsBtn: document.getElementById('connect-spotify-settings-btn'),
             connectionStatus: document.getElementById('connection-status'),
             saveSettingsBtn: document.getElementById('save-settings-btn'),
             resetSettingsBtn: document.getElementById('reset-settings-btn'),
@@ -195,7 +195,7 @@ class UIController {
     // Update playback controls
     updatePlaybackControls(state) {
         if (!state) {
-            this.elements.playPauseBtn.innerHTML = '<i class=\"fas fa-play\"></i>';
+            this.elements.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
             this.elements.shuffleBtn.classList.remove('active');
             this.elements.repeatBtn.classList.remove('active');
             return;
@@ -203,7 +203,7 @@ class UIController {
         
         // Play/Pause button
         const playIcon = state.is_playing ? 'fa-pause' : 'fa-play';
-        this.elements.playPauseBtn.innerHTML = `<i class=\"fas ${playIcon}\"></i>`;
+        this.elements.playPauseBtn.innerHTML = `<i class="fas ${playIcon}"></i>`;
         
         // Shuffle button
         if (state.shuffle_state) {
@@ -216,12 +216,12 @@ class UIController {
         this.elements.repeatBtn.classList.remove('active');
         if (state.repeat_state === 'context') {
             this.elements.repeatBtn.classList.add('active');
-            this.elements.repeatBtn.innerHTML = '<i class=\"fas fa-redo\"></i>';
+            this.elements.repeatBtn.innerHTML = '<i class="fas fa-redo"></i>';
         } else if (state.repeat_state === 'track') {
             this.elements.repeatBtn.classList.add('active');
-            this.elements.repeatBtn.innerHTML = '<i class=\"fas fa-redo-alt\"></i>';
+            this.elements.repeatBtn.innerHTML = '<i class="fas fa-redo-alt"></i>';
         } else {
-            this.elements.repeatBtn.innerHTML = '<i class=\"fas fa-redo\"></i>';
+            this.elements.repeatBtn.innerHTML = '<i class="fas fa-redo"></i>';
         }
         
         // Volume
@@ -280,10 +280,10 @@ class UIController {
             const imageUrl = track.album?.images?.[2]?.url || 'assets/default-album.png';
             
             item.innerHTML = `
-                <img src=\"${imageUrl}\" alt=\"Album Art\">
-                <div class=\"queue-item-info\">
-                    <div class=\"queue-item-name\">${track.name}</div>
-                    <div class=\"queue-item-artist\">${track.artists?.map(a => a.name).join(', ')}</div>
+                <img src="${imageUrl}" alt="Album Art">
+                <div class="queue-item-info">
+                    <div class="queue-item-name">${track.name}</div>
+                    <div class="queue-item-artist">${track.artists?.map(a => a.name).join(', ')}</div>
                 </div>
             `;
             
@@ -325,18 +325,18 @@ class UIController {
             }
             
             resultElement.innerHTML = `
-                <img src=\"${imageUrl}\" alt=\"${title}\">
-                <div class=\"search-item-info\">
-                    <div class=\"search-item-name\">${title}</div>
-                    <div class=\"search-item-artist\">${subtitle}</div>
+                <img src="${imageUrl}" alt="${title}">
+                <div class="search-item-info">
+                    <div class="search-item-name">${title}</div>
+                    <div class="search-item-artist">${subtitle}</div>
                 </div>
                 ${item.type === 'track' ? `
-                    <div class=\"search-item-actions\">
-                        <button class=\"search-action-btn play-btn\" title=\"Play Now\">
-                            <i class=\"fas fa-play\"></i>
+                    <div class="search-item-actions">
+                        <button class="search-action-btn play-btn" title="Play Now">
+                            <i class="fas fa-play"></i>
                         </button>
-                        <button class=\"search-action-btn queue-btn\" title=\"Add to Queue\">
-                            <i class=\"fas fa-plus\"></i>
+                        <button class="search-action-btn queue-btn" title="Add to Queue">
+                            <i class="fas fa-plus"></i>
                         </button>
                     </div>
                 ` : ''}
@@ -556,6 +556,7 @@ class UIController {
 
     showSettings() {
         this.loadSettingsToForm();
+        // Always show the in-page settings modal so settings appear inside the app
         this.elements.settingsModal?.classList.remove('hidden');
     }
 
@@ -654,7 +655,7 @@ class UIController {
     }
 
     updateConnectionStatus(status) {
-        if (!this.elements.connectionStatus) return;
+        if (!this.elements.connectionStatus) return; 
         
         const statusElement = this.elements.connectionStatus;
         const connectButton = this.elements.connectSpotifySettingsBtn;
@@ -755,20 +756,23 @@ class UIController {
 
     // Overlay positioning and dragging
     startDrag(event) {
+        // If running in Electron use native window dragging (via CSS -webkit-app-region: drag)
+        if (window.electronAPI && window.electronAPI.isElectron) return;
+
         this.isDragging = true;
         this.elements.overlay?.classList.add('dragging');
-        
+
         const rect = this.elements.overlay.getBoundingClientRect();
         this.dragOffset = {
             x: event.clientX - rect.left,
             y: event.clientY - rect.top
         };
-        
+
         event.preventDefault();
     }
 
     handleDrag(event) {
-        if (!this.isDragging) return;
+        if (!this.isDragging) return; 
         
         const x = event.clientX - this.dragOffset.x;
         const y = event.clientY - this.dragOffset.y;
@@ -786,21 +790,28 @@ class UIController {
     }
 
     endDrag() {
-        if (!this.isDragging) return;
-        
+        if (!this.isDragging) return; 
+
         this.isDragging = false;
         this.elements.overlay?.classList.remove('dragging');
-        
-        // Save position
-        const rect = this.elements.overlay.getBoundingClientRect();
-        window.appState.settings.position = {
-            x: rect.left,
-            y: rect.top
-        };
-        window.appState.saveSettings();
+
+        // If not running in Electron, save DOM position
+        if (!(window.electronAPI && window.electronAPI.isElectron)) {
+            const rect = this.elements.overlay.getBoundingClientRect();
+            window.appState.settings.position = {
+                x: rect.left,
+                y: rect.top
+            };
+            window.appState.saveSettings();
+        }
     }
 
     loadStoredPosition() {
+        // Only apply stored DOM position for web builds. In Electron the frameless window
+        // will be positioned via the OS and BrowserWindow API; keeping DOM positioning
+        // can conflict with the native window.
+        if (window.electronAPI && window.electronAPI.isElectron) return;
+
         const position = window.appState.settings.position;
         if (position) {
             this.elements.overlay.style.right = 'auto';
@@ -814,10 +825,10 @@ class UIController {
         
         if (this.isMinimized) {
             this.elements.overlay?.classList.add('minimized');
-            this.elements.minimizeBtn.innerHTML = '<i class=\"fas fa-plus\"></i>';
+            this.elements.minimizeBtn.innerHTML = '<i class="fas fa-plus"></i>';
         } else {
             this.elements.overlay?.classList.remove('minimized');
-            this.elements.minimizeBtn.innerHTML = '<i class=\"fas fa-minus\"></i>';
+            this.elements.minimizeBtn.innerHTML = '<i class="fas fa-minus"></i>';
         }
     }
 
@@ -859,10 +870,10 @@ class UIController {
         };
         
         toast.innerHTML = `
-            <i class=\"fas ${icons[type] || icons.info} toast-icon\"></i>
-            <span class=\"toast-message\">${message}</span>
-            <button class=\"toast-close\">
-                <i class=\"fas fa-times\"></i>
+            <i class="fas ${icons[type] || icons.info} toast-icon"></i>
+            <span class="toast-message">${message}</span>
+            <button class="toast-close">
+                <i class="fas fa-times"></i>
             </button>
         `;
         

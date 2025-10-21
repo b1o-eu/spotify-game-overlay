@@ -39,20 +39,36 @@ class SpotifyAPI {
 
     // Initialize from OAuth callback
     async initializeFromCallback() {
-        // Check if running in Electron
-        if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.isElectron) {
-            // Set up Electron OAuth callback listener
-            window.electronAPI.onSpotifyCallback((params) => {
-                this.handleOAuthCallback(params);
-            });
-        } else {
-            // Handle web-based OAuth callback
-            const urlParams = new URLSearchParams(window.location.search);
-            const authCode = urlParams.get('code');
-            
-            if (authCode) {
-                this.handleOAuthCallback(urlParams.toString());
+        // Listen for messages from the callback window (Electron or popup flow)
+        window.addEventListener('message', (event) => {
+            if (event.origin !== window.location.origin) {
+                return;
             }
+
+            const { type, code, error } = event.data || {};
+            if (type === 'spotify-auth-code' && code) {
+                this.handleOAuthCallback(`?code=${code}`);
+            } else if (type === 'spotify-auth-error') {
+                console.error('OAuth error from callback:', error);
+            }
+        });
+
+        // Handle web-based OAuth callback (redirect to callback.html)
+        const urlParams = new URLSearchParams(window.location.search);
+        const authCode = urlParams.get('code');
+        if (authCode) {
+            this.handleOAuthCallback(urlParams.toString());
+        }
+
+        // Electron: listen for callback forwarded from main process via IPC
+        if (window.electronAPI && typeof window.electronAPI.onSpotifyCallback === 'function') {
+            window.electronAPI.onSpotifyCallback((params) => {
+                try {
+                    this.handleOAuthCallback(params);
+                } catch (e) {
+                    console.error('Failed to handle Electron OAuth callback:', e);
+                }
+            });
         }
     }
 
@@ -64,6 +80,18 @@ class SpotifyAPI {
         
         if (error) {
             console.error('OAuth error:', error);
+            try {
+                if (window.uiController && typeof window.uiController.showToast === 'function') {
+                    const err = String(error).toLowerCase();
+                    if (err.includes('insecure')) {
+                        window.uiController.showToast('Spotify rejected the redirect URI as insecure. Add http://localhost:8080/callback to your Spotify app Redirect URIs.', 'error', 6000);
+                    } else if (err.includes('invalid')) {
+                        window.uiController.showToast('Spotify says the redirect URI is invalid. Ensure it exactly matches your app settings.', 'error', 6000);
+                    } else {
+                        window.uiController.showToast(`Spotify auth error: ${error}`,'error',5000);
+                    }
+                }
+            } catch(_) {}
             return;
         }
         
@@ -176,23 +204,13 @@ class SpotifyAPI {
         });
         
         const authUrl = `${CONFIG.SPOTIFY.ACCOUNTS_BASE_URL}/authorize?${params}`;
+        console.debug('[SpotifyAPI] Using redirect URI:', CONFIG.SPOTIFY.REDIRECT_URI);
         
         // Check if running in Electron
         if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.isElectron) {
-            // In Electron, request the main process to open the auth URL in the system browser
-            console.debug('[SpotifyAPI] Opening auth URL in system browser:', authUrl);
-            try {
-                const opened = await window.electronAPI.openExternal(authUrl);
-                console.debug('[SpotifyAPI] openExternal returned:', opened);
-                if (!opened) {
-                    // Fallback to opening in-app if external open fails
-                    console.warn('[SpotifyAPI] openExternal returned false, falling back to in-app redirect');
-                    window.location.href = authUrl;
-                }
-            } catch (e) {
-                console.error('[SpotifyAPI] openExternal failed, falling back to in-app redirect', e);
-                window.location.href = authUrl;
-            }
+            // Open a popup window for Spotify authentication
+            console.debug('[SpotifyAPI] Opening auth URL in Electron:', authUrl);
+            const authWindow = window.open(authUrl, 'SpotifyAuth', 'width=500,height=600');
         } else {
             // In web browser, redirect to auth URL
             console.debug('[SpotifyAPI] Opening auth URL in web:', authUrl);
