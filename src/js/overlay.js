@@ -97,7 +97,7 @@
                             <span class="marquee-content overlay-track">Not Playing</span>
                         </div>
                     </div>
-                    <div class="overlay-artist">Connect to Spotify</div>
+                    <div class="overlay-artist" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Connect to Spotify</div>
                     <div class="overlay-progress">
                         <div class="overlay-time current">0:00</div>
                         <div class="overlay-progress-bar"><div class="overlay-progress-fill"></div></div>
